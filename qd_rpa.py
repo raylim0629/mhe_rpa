@@ -15,6 +15,8 @@ from pptx.util import Inches
 from openpyxl import load_workbook
 from openpyxl import Workbook
 
+#git 이 잘 동작하는지 위한 주석
+
 try: 
     from PIL import Image 
 except ImportError: 
