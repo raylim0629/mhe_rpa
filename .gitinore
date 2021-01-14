@@ -1,0 +1,12 @@
+
+
+## *.pdf ignore ##
+*.pdf 
+
+## info.pdf do mange ##
+!info.pdf
+
+
+## '/soure/' folder ignore ##
+
+source/
