@@ -1,3 +1,6 @@
+########################################
+## MHE RPA Program                    ## 
+########################################
 import sys
 import glob
 import os
@@ -14,59 +17,35 @@ from pptx import Presentation
 from pptx.util import Inches
 from openpyxl import load_workbook
 from openpyxl import Workbook
+import re, atexit
 
+# Tesseract library 를 읽어 오기 위한 부분 입니다.
+# Try/Except를 왜하는지는 잘 모르겠어요.
 try: 
     from PIL import Image 
 except ImportError: 
     import Image 
 import pytesseract 
 
-path = r'./source/'
+# 입/출력 문서 관리 폴더를 정의합니다.
+# 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요.
+path = r'./source/'     
 img_dir = r'./result/'
 obj_dir = r'./object/'
 find_dir = r'./find/'
 
-methods = ['cv2.TM_CCOEFF_NORMED']#, 'cv2.TM_CCORR_NORMED', 'cv2.TM_SQDIFF_NORMED'] # 찾는 방법
+# OpenCV로 기능에서 이미지 (매칭)검색할 때 찾는 방법을 정의.
+# TM_CCOEFF_NORMED - 정규화된 상관계수 방법 (요것 만 활성화, 딴 건 잘 못찾아서...)
+# TM_CCORR_NORMED - 정규화된 상관관계 방법
+# TM_SQDIFF_NORMED - 정규화된 제곱차 매칭 방법
+methods = ['cv2.TM_CCOEFF_NORMED']#, 'cv2.TM_CCORR_NORMED', 'cv2.TM_SQDIFF_NORMED']
+
+# DPI를 콤보박스에서 고를 수 있게 리스트에 담아봤어요.
 dpi_list = ['100','200','300','400','800','1600']
 
+# Tesseract 이미지 to 문자 변환 Option 입니다. (영어 + 한글) 
 custom_config = r'-l eng+kor'
 
-class ImageConverter:
-    def convertPDFtoPNG(self,path):
-        self.path = path
-        self.pdf_dir = glob.glob(self.path + "/*")
-        for pdf_ in self.pdf_dir:
-            pages = convert_from_path(pdf_, dpi=800)
-            for i, page in enumerate(pages):
-                page.save(f'{img_dir+pdf_[len(path):-4]}_page{i+1:0>2d}.png','PNG')
-                print(f'{pdf_[len(path):-4]}_page{i+1:0>2d}.png saved...')
-            print('Done !')
-
-class MyCheckBox(QCheckBox): 
-    def __init__(self, item): 
-        super().__init__() 
-        self.item = item 
-        self.mycheckvalue = 0 # 0 --> unchecked, 2 --> checked 
-        self.stateChanged.connect(self.__checkbox_change) 
-        self.stateChanged.connect(self.item.my_setdata) # checked 여부로 정렬을 하기위한 data 저장 
-    
-    def __checkbox_change(self, checkvalue): 
-        self.mycheckvalue = checkvalue 
-        print("checkbox row= ", self.get_row()) 
-    
-    def get_row(self): 
-        return self.item.row()
-
-class MyQTableWidgetItemCheckBox(QTableWidgetItem): 
-    def __init__(self): 
-        super().__init__() 
-        self.setData(Qt.UserRole, 0) 
-        
-    def __lt__(self, other): 
-        return self.data(Qt.UserRole) < other.data(Qt.UserRole) 
-        
-    def my_setdata(self, value): 
-        self.setData(Qt.UserRole, value)
 
 class MyWindow(QWidget):  
     def __init__(self):
@@ -74,9 +53,11 @@ class MyWindow(QWidget):
         self.setupUI()
 
     def setupUI(self):
+        # 전체 Layout은 Grid 형태 입니다.
         layout = QGridLayout()
 
         # Drawing group
+        # 도면을 처리하는 그룹입니다.
         self.drawing_group = QGroupBox('drawing')
         self.drawing_layout = QGridLayout()
         self.drawing_loc_le = QLineEdit()
@@ -102,7 +83,8 @@ class MyWindow(QWidget):
         self.drawing_group.setLayout(self.drawing_layout)
         layout.addWidget(self.drawing_group,0,0,5,1)
         
-        # finding & ocr 
+        # finding & ocr
+        # 원하는 그림을 찾고 OCR을 진행하기 위한 그룹입니다.
         self.finding_group = QGroupBox('find & OCR')
         self.finding_layout = QGridLayout()
         self.finding_le = QLineEdit()
@@ -125,13 +107,12 @@ class MyWindow(QWidget):
         self.finding_layout.addWidget(self.finding_le,0,0,1,4)
         self.finding_layout.addWidget(self.finding_obj_btn,0,4,1,1)
         self.finding_layout.addWidget(self.finding_anal_btn,0,5,1,1)
-#        self.finding_layout.addWidget(self.finding_obj_label,1,0,6,6)
-#        self.finding_layout.addWidget(self.finding_match_label,1,6,6,6)
         self.finding_layout.addWidget(self.finding_tabs,1,0,6,6)
         self.finding_group.setLayout(self.finding_layout)
         layout.addWidget(self.finding_group,5,0,7,1)
 
         # 중간과정 문자표시 테이블
+        # 디버깅 또는 중간과정을 사용자에게 전달하기 위해 만든 Text 창 그룹 입니다.
         self.terminal_group = QGroupBox('teminal')
         self.terminal_layout = QVBoxLayout()
         self.terminal_browser = QTextBrowser()
@@ -143,6 +124,8 @@ class MyWindow(QWidget):
         layout.addWidget(self.terminal_group, 4,1,7,1)
 
         # function button
+        # 각종 기능 버튼이 있는 그룹입니다. (Clear/Quit/Add row/Delete Row/Update Row 등등...)
+        # 또 뭔가 기능을 넣을 때는 해당 그룹을 손되시면 됩니다. 크기도 좀 키워야 하는데...
         self.func_button_group = QGroupBox('function button')
         self.func_button_layout = QGridLayout()
         self.func_button_clear = QPushButton("Clear")
@@ -168,6 +151,9 @@ class MyWindow(QWidget):
         layout.addWidget(self.func_button_group,11,1,1,1)
 
         # infomation
+        # Line Editor 등이 있는 그룹니다.
+        # 요기서 내용을 업데이트해서 Table (DB) 에 업데이트 하고 가져오고 합니다.
+        # 문서를 출력할 때도 여기의 Text를 기준으로 문서를 생성합니다.
         self.info_group = QGroupBox('information')
         self.info_group.setFixedWidth(400)
         self.info_layout = QGridLayout()
@@ -183,6 +169,7 @@ class MyWindow(QWidget):
         layout.addWidget(self.info_group,4,2,8,1)
 
         # documentation button
+        # 문서를 출력하기 위한 버튼 모음 입니다.
         self.doc_button_group = QGroupBox('documentaion button')
         self.doc_button_group.setFixedWidth(250)
         self.doc_button_layout = QVBoxLayout()
@@ -199,8 +186,9 @@ class MyWindow(QWidget):
         layout.addWidget(self.doc_button_group,4,3,8,1)
 
         # data table
+        # Data들을 관리하기 위한 테이블 입니다. (DB 관리용)
+        # 여기 Table이 Pandas와 연동이 되어 있습니다.
         self.data_table_group = QGroupBox('data table')
-        #self.data_table_group.setFixedWidth(1100)
         self.data_table_layout = QVBoxLayout()
         self.data_table_pjt = QTableWidget(self)
         self.data_table_pjt.itemClicked.connect(self.item_clicked)
@@ -222,6 +210,7 @@ class MyWindow(QWidget):
                 self.data_table_pjt.setItem(i, j, QTableWidgetItem(str(self.df.iloc[i, j])))
 
         # 데이터프레임의 데이터를 list에 담아둔다.
+        # 요거는 리스트로 데이터를 관리하기 위해 가져왔는데 안써도 될 것 같기도...
         self.data = []
         for i in range(list(self.df.shape)[0]):
             temp = list(self.df.iloc[i,:])
@@ -230,11 +219,13 @@ class MyWindow(QWidget):
         self.all_columns = list(self.df.columns)
 
         # GUI 
+        # 세팅을 끝내고 뿌려줍니다...
         self.setGeometry(50, 50, 800, 800)
         self.setWindowTitle("Drawing Analyzer")
         self.setLayout(layout)
         self.show() 
         
+    # Drawing을 그룹의 Open 버튼을 눌렀을 때 파일을 찾습니다. 
     def selectButtonClicked(self):
         self.fname = QFileDialog.getOpenFileName(self, 'Open file', './source/')
         if self.fname:
@@ -245,6 +236,7 @@ class MyWindow(QWidget):
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
             return
 
+    # Drawing (PDF)를 이미지 (PNG)로 변경하는 버튼 기능 입니다.
     def changeToImageButtonClicked(self):
         pages = convert_from_path(self.fname[0], dpi=int(self.drawing_combo.currentText()))    #400
         
@@ -274,6 +266,7 @@ class MyWindow(QWidget):
             self.drawing_label[n].setPixmap(QPixmap(pic))
             os.remove(filename)
 
+    # 내가 찾고자 하는 그림을 선택하는 버튼...을 눌렀을 때 기능
     def findingButtonClicked(self):
         filename = "{}.png".format(os.getpid())
         self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', './object/')
@@ -290,6 +283,8 @@ class MyWindow(QWidget):
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
             return
 
+    # 찾아낸 그림의 문자를 분석합니다...이미지 투 문자 (OCR)
+    # 요게 잘 안되요... 업데이트가 필요합니다.
     def analyzeButtonClicked(self):
         #이미지 매칭 검색
         filename = "{}.png".format(os.getpid())
@@ -332,6 +327,7 @@ class MyWindow(QWidget):
         os.remove(filename)
 
         # fill line editor
+        # 찾아낸 글자를 Line Editor에 적습니다. 현재는 아래 5개만 찾아서 넣습니다. (총 13개 칸...)
         self.info_le[0].setText(text[text.find("1 Pro",):text.find("\n",text.find("1 Pro",),)].replace("1 Project Name ","")) 
         self.info_le[6].setText(text[text.find("2 H/W",):text.find("\n",text.find("2 H/W",),)].replace("2 H/W, S/W Ver. ","")) 
         self.info_le[7].setText(text[text.find("3 OEM",):text.find("\n",text.find("3 OEM",),)].replace("3 OEM P/NO ",""))
@@ -342,17 +338,21 @@ class MyWindow(QWidget):
         file.writelines(str(text.encode('utf-8-sig')))
         file.close()
 
+        # 찾아낸 그림의 매치율 과 위치를 뿌려줍니다.
         print(top_left, final_match_val)
         self.terminal_browser.append(f'top:' + str(top_left[0]) + f'   left:' + str (top_left[1]))     
         self.terminal_browser.append(f'match late:' + str(round(final_match_val*100,4)) + "%")     
 
+    # 텍스트 창을 깨끗하게...
     def clear_text(self):
         self.tb.clear()
 
+    # 끌 때 잘 꺼지라고... 버튼 하나 놔봤어요. (근데 보통 X 누릅니다.)
     def exit_app(self):
         QCoreApplication.instance().quit()
         sys.exit(app.exec_())
 
+    # PPT로 문서 만들 때 테스트 용으로 만들어 봤어요...(지금은 안쓰네요... 엑셀로 다가)
     def ppt_add_picture(self):
         self.fname = QFileDialog.getOpenFileName(self, 'Open file', './find/')
         prs = Presentation()
@@ -362,6 +362,9 @@ class MyWindow(QWidget):
         pic = slide.shapes.add_picture( self.fname[0],left, top)
         prs.save('text.pptx')
 
+    # Table (DB)에 열을 추가 합니다. 추가할 때 Line Editor의 값들을 가져 옵니다.
+    # Dataframe의 값을 먼저 업데이트하고... Table Widget에 값을 뿌려줍니다.
+    # 그리고 CSV 파일도 업데이트 합니다.
     def add_row(self):
         new_pjt_info = [(le.text() for le in self.info_le)]
         dfNew = pd.DataFrame(new_pjt_info, columns = self.df.columns)
@@ -383,7 +386,9 @@ class MyWindow(QWidget):
             le.clear()
 
         print(self.df)
-
+    # Table (DB)에 열을 삭제 합니다. 추가할 때 Line Editor의 값들을 가져 옵니다.
+    # Dataframe의 값을 먼저 업데이트하고... Table Widget에 값을 뿌려줍니다.
+    # 그리고 CSV 파일도 업데이트 합니다.
     def delete_row(self):
         self.terminal_browser.append("Row["+str(self.data_table_pjt.currentRow()+1)+ "] Deleted")
         self.df = self.df.drop(self.data_table_pjt.currentRow())
@@ -398,12 +403,15 @@ class MyWindow(QWidget):
         self.data_table_pjt.resizeColumnsToContents()
         print(self.df)
 
+    # Table (DB)에 열을 선하면 내용을 Line Editor에 뿌려 줍니다.
     def item_clicked(self):
         self.data_table_pjt.selectRow(self.data_table_pjt.currentRow())
         for i, le in enumerate(self.info_le):
             le.setText(self.data_table_pjt.item(self.data_table_pjt.currentRow(),i).text())
         print(self.df)
 
+    # Table Widget (DB) 의 선택된 행을 업데이트 합니다.
+    # 업데이트 기준은 Line Editor 입니다.
     def update_row(self):
         new_pjt_info = [(le.text() for le in self.info_le)]
         print(len(self.df.columns))
@@ -427,10 +435,11 @@ class MyWindow(QWidget):
 
         print(self.df)
 
-
+    # X 버튼을 눌렀을 때 ...
     def closeEvent(self, event):
         sys.exit(app.exec_())
 
+    # 검서 협정서 만들기 버튼을 눌렀을 때...
     def doc_agreement_build(self):
         QMessageBox.about(self, "Warning", '주의사항: 파일 생성 전, 생성할 차종 선택 필수')
         fname = QFileDialog.getOpenFileName(self, 'Open file', './template/')
@@ -477,6 +486,7 @@ class MyWindow(QWidget):
         
         self.terminal_browser.append(write_wb + "saved")
 
+    # 공사중...
     def doc_sample_notice_build(self):
         QMessageBox.about(self, "Warning", '주의사항: 파일 생성 전, 생성할 차종 선택 필수')
         fname = QFileDialog.getOpenFileName(self)
