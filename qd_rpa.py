@@ -29,10 +29,10 @@ import pytesseract
 
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요.
-path = r'./source/'     
-img_dir = r'./result/'
-obj_dir = r'./object/'
-find_dir = r'./find/'
+path = r'./source/'     # 도면이 들어있는 폴더 
+img_dir = r'./result/'  # 도면이 변환된 그림파일이 들어있는 폴더
+obj_dir = r'./object/'  # 찾고자 하는 그림파일이 들어있는 폴더
+find_dir = r'./find/'   # 찾은 그림 파일이 들어있는 폴더
 
 # OpenCV로 기능에서 이미지 (매칭)검색할 때 찾는 방법을 정의.
 # TM_CCOEFF_NORMED - 정규화된 상관계수 방법 (요것 만 활성화, 딴 건 잘 못찾아서...)
@@ -113,7 +113,7 @@ class MyWindow(QWidget):
 
         # 중간과정 문자표시 테이블
         # 디버깅 또는 중간과정을 사용자에게 전달하기 위해 만든 Text 창 그룹 입니다.
-        self.terminal_group = QGroupBox('teminal')
+        self.terminal_group = QGroupBox('terminal')
         self.terminal_layout = QVBoxLayout()
         self.terminal_browser = QTextBrowser()
         self.terminal_browser.setAcceptRichText(True)
@@ -208,15 +208,6 @@ class MyWindow(QWidget):
         for i in range(len(self.df.index)):
             for j in range(len(self.df.columns)):
                 self.data_table_pjt.setItem(i, j, QTableWidgetItem(str(self.df.iloc[i, j])))
-
-        # 데이터프레임의 데이터를 list에 담아둔다.
-        # 요거는 리스트로 데이터를 관리하기 위해 가져왔는데 안써도 될 것 같기도...
-        self.data = []
-        for i in range(list(self.df.shape)[0]):
-            temp = list(self.df.iloc[i,:])
-            self.data.append(temp)
-        self.all_records = self.data
-        self.all_columns = list(self.df.columns)
 
         # GUI 
         # 세팅을 끝내고 뿌려줍니다...
@@ -345,7 +336,7 @@ class MyWindow(QWidget):
 
     # 텍스트 창을 깨끗하게...
     def clear_text(self):
-        self.tb.clear()
+        self.terminal_browser.clear()
 
     # 끌 때 잘 꺼지라고... 버튼 하나 놔봤어요. (근데 보통 X 누릅니다.)
     def exit_app(self):
