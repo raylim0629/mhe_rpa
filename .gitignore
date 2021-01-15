@@ -1,5 +1,7 @@
 # no .a files
 *.a
+*.txt
+*.yml
 
 # but do track lib.a, even though you're ignoring .a files above
 !lib.a
@@ -15,7 +17,6 @@ source/
 template/
 
 # ignore doc/notes.txt, but not doc/server/arch.txt
-doc/*.txt
 
 # ignore all .pdf files in the doc/ directory
 doc/**/*.pdf
