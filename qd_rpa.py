@@ -7,6 +7,8 @@ import os
 import cv2
 import pandas as pd
 import datetime
+import pytesseract 
+import re, atexit
 from pdf2image import convert_from_path
 from os.path import isfile, join
 from os import listdir
@@ -17,15 +19,7 @@ from pptx import Presentation
 from pptx.util import Inches
 from openpyxl import load_workbook
 from openpyxl import Workbook
-import re, atexit
-
-# Tesseract library 를 읽어 오기 위한 부분 입니다.
-# Try/Except를 왜하는지는 잘 모르겠어요.
-try: 
-    from PIL import Image 
-except ImportError: 
-    import Image 
-import pytesseract 
+from PIL import Image 
 
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요.
@@ -236,7 +230,7 @@ class MyWindow(QWidget):
         for png_file in png_files:
             try:
                 os.remove(png_file)
-            except:
+            except OSError as e:
                 print(f"Error:{e.strerror}")
         
         for i, page in enumerate(pages):
@@ -280,6 +274,9 @@ class MyWindow(QWidget):
         #이미지 매칭 검색
         filename = "{}.png".format(os.getpid())
         final_match_val = 0
+        match_val = 0
+        top_left = 0
+        final_image = self.image[0]
         for n in range(0,len(self.onlyfiles)):
             for i, method_name in enumerate(methods):
                 img_draw = self.images[n].copy()
@@ -311,7 +308,7 @@ class MyWindow(QWidget):
 
         cv2.imwrite(filename, final_image)
         pic = QPixmap(filename)
-        pic.save(f'{find_dir}find_page{n:0>2d}.png','PNG')
+        pic.save(f'{find_dir}find_page.png','PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label.setPixmap(pic_display)
         
@@ -434,6 +431,8 @@ class MyWindow(QWidget):
     def doc_agreement_build(self):
         QMessageBox.about(self, "Warning", '주의사항: 파일 생성 전, 생성할 차종 선택 필수')
         fname = QFileDialog.getOpenFileName(self, 'Open file', './template/')
+        file_save = fname[0]
+        file_type = '.xlsx'
         self.terminal_browser.append(str(fname[0]))
         load_wb = load_workbook(fname[0], data_only=True)
         load_ws = load_wb['as']
