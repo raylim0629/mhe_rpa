@@ -26,6 +26,7 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 from PIL import Image 
 
+
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요. 
 path = r'./source/'     # 도면이 들어있는 폴더 
