@@ -56,8 +56,9 @@ class MyWindow(QWidget):
 
         self.myMenuBar = QMenuBar(self)
         self.myMenuBar.setFixedHeight(25)
+        self.myMenuBar.setNativeMenuBar(False)
         self.myMenuBar.palette().setColor(self.myMenuBar.foregroundRole(), Qt.gray)
-        file_menubar = self.myMenuBar.addMenu("File")
+        file_menubar = self.myMenuBar.addMenu("&File")
         edit_menubar = self.myMenuBar.addMenu("Edit")
         view_menubar = self.myMenuBar.addMenu("view")
         help_menubar = self.myMenuBar.addMenu("Help")
