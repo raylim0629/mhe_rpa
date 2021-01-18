@@ -221,6 +221,11 @@ class MyWindow(QWidget):
             for j in range(len(self.df.columns)):
                 self.data_table_pjt.setItem(i, j, QTableWidgetItem(str(self.df.iloc[i, j])))
 
+        self.statusbar = QStatusBar(self)
+        self.statusbar.showMessage('Ready')
+        self.statusbar.setFixedHeight(20)
+        layout.addWidget(self.statusbar,14,0,1,1)
+
         # GUI 
         # 세팅을 끝내고 뿌려줍니다...
         self.setGeometry(50, 50, 800, 800)
@@ -294,7 +299,7 @@ class MyWindow(QWidget):
         final_match_val = 0
         match_val = 0
         top_left = 0
-        final_image = self.image[0]
+        final_image = self.images[0]
         for n in range(0,len(self.onlyfiles)):
             for i, method_name in enumerate(methods):
                 img_draw = self.images[n].copy()
