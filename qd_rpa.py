@@ -7,6 +7,9 @@
 # Generated @ 2021.Jan.15th ~ 
 
 import sys
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+sys.coinit_flags = 2
 import glob
 import os
 import cv2
@@ -25,8 +28,26 @@ from pptx.util import Inches
 from openpyxl import load_workbook
 from openpyxl import Workbook
 from PIL import Image 
+import pywinauto
+from pywinauto.application import Application
+#from pywinauto.keyboard import SendKeys    
+import time
+import win32gui
+import win32con
+import win32api
+import win32com
+from pyglet.window import mouse
 
+def on_mouse(event, x, y, flags, param):
+    
+    if event == cv2.EVENT_LBUTTONDOWN: # 왼쪽 클릭시 실행
+        oldx, oldy = x, y # 마우스가 눌렀을 때 좌표 저장, 띄워진 영상에서의 좌측 상단 기준
+        print('EVENT_LBUTTONDOWN: %d, %d' % (x, y)) # 좌표 출력
 
+    elif event == cv2.EVENT_LBUTTONUP: # 마우스 클릭하고 뗏을때 발생
+        print('EVENT_LBUTTONUP: %d, %d' % (x, y)) # 좌표 출력
+
+    
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요. 
 path = r'./source/'     # 도면이 들어있는 폴더 
@@ -244,12 +265,102 @@ class MyWindow(QWidget):
             QMessageBox.about(self, "Warning", "파일을 선택되지 않았습니다.")
             return
 
+        '''
+        app = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.fname[0])
+        app.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
+        time.sleep(1)
+        
+        window_id = win32gui.FindWindow(None, os.path.basename(self.fname[0]) + " - Adobe Reader")
+        self.terminal_browser.append(os.path.basename(self.fname[0]) + " - Adobe Reader" + " opened with PID: " + str(window_id))
+
+        win32gui.SetForegroundWindow(window_id)
+        shell = win32com.client.Dispatch("WScript.Shell")
+        shell.SendKeys('{F10}')
+        shell.SendKeys('v')
+        shell.SendKeys('z')
+        shell.SendKeys('M')
+        
+        pywinauto.mouse.move(coords=(1109,900))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0)
+        time.sleep(1)
+        pywinauto.mouse.move(coords=(1240,975))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0)
+        '''
+        #app.kill()
+
     # Drawing (PDF)를 이미지 (PNG)로 변경하는 버튼 기능 입니다.
     def changeToImageButtonClicked(self):
-        pages = convert_from_path(self.fname[0], dpi=int(self.drawing_combo.currentText()))
+        try:
+            pages = convert_from_path(self.fname[0], dpi=int(self.drawing_combo.currentText()))
+        except:
+            reply = QMessageBox.question(self, "Warning", "PDF 파일이 DRM에 걸려 있습니다. 직접 선택 영역을 직접 선택하시겠습니까?",
+                                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+            if reply == QMessageBox.Yes:        
+                app = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.fname[0])
+                app.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
+                time.sleep(0.1)
+                window_name = os.path.basename(self.fname[0]) + " - Adobe Reader"
+                window_id = win32gui.FindWindow(None, window_name)
+                self.terminal_browser.append(os.path.basename(self.fname[0]) + " - Adobe Reader" + " opened with PID: " + str(window_id))
+                self.terminal_browser.append(os.path.basename("opened with PID: " + str(window_id) + "name" + window_name))
+ 
+                cv2.setMouseCallback(window_name, on_mouse)
+
+                win32gui.SetForegroundWindow(window_id)
+                shell = win32com.client.Dispatch("WScript.Shell")
+                shell.SendKeys('{F10}')
+                shell.SendKeys('V')
+                shell.SendKeys('Z')
+                shell.SendKeys('M')
+
+                prev_state_left = win32api.GetKeyState(0x01)
+
+                while True:
+                    curr_state_left = win32api.GetKeyState(0x01)
+                    if prev_state_left != curr_state_left:
+                        if curr_state_left == 1 :
+                            self.terminal_browser.append("prev: "+str(prev_state_left))
+                            self.terminal_browser.append("curr: "+str(curr_state_left))
+                            self.terminal_browser.append("mouse released")
+                            break
+                        else: 
+                            self.terminal_browser.append("prev: "+str(prev_state_left))
+                            self.terminal_browser.append("curr: "+str(curr_state_left))
+                            pass
+                    else:
+                        pass
+                    time.sleep(0.01)
+
+                win32gui.SetForegroundWindow(window_id)
+                time.sleep(0.1)
+                shell.SendKeys('{F10}')
+                shell.SendKeys('E')
+                shell.SendKeys('A')
+                
+                prev_state_left = win32api.GetKeyState(0x01)
+
+                while True:
+                    curr_state_left = win32api.GetKeyState(0x01)
+                    if prev_state_left != curr_state_left:
+                        if curr_state_left == 1 :
+                            self.terminal_browser.append("mouse released")
+                            break
+                        else: 
+                            pass
+                    else:
+                        pass
+                    time.sleep(0.001)
+
+                app.kill()
+
+                return
+
+            else:
+                return
+
         
         png_files = glob.glob('result/*.png')
-
         for png_file in png_files:
             try:
                 os.remove(png_file)
@@ -266,7 +377,6 @@ class MyWindow(QWidget):
         self.images = [cv2.imread(file) for file in glob.glob(img_dir + "/*.png")]
 
         filename = "{}.png".format(os.getpid())
-
         for i in range(0,len(self.onlyfiles)):
             cv2.imwrite(filename, self.images[i])
             pic = QPixmap(filename)
