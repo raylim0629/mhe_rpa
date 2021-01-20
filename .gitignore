@@ -1,8 +1,15 @@
 # no .a files
 *.a
+<<<<<<< HEAD
+*.pdf
+*.png
+*.xls
+*.xlsx
+=======
 *.txt
 *.yml
 *.csv
+>>>>>>> 743e53a042b65eef3cfc20e57a3261c0a5f279cd
 
 # but do track lib.a, even though you're ignoring .a files above
 !lib.a

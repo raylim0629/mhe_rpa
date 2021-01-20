@@ -17,6 +17,9 @@ import pandas as pd
 import datetime
 import pytesseract
 import re, atexit
+import openpyxl
+
+from datetime import datetime ##@@ datetime.datetime (import) to attach date on filename
 from pdf2image import convert_from_path
 from os.path import isfile, join
 from os import listdir
@@ -54,6 +57,7 @@ path = r'./source/'     # 도면이 들어있는 폴더
 img_dir = r'./result/'  # 도면이 변환된 그림파일이 들어있는 폴더
 obj_dir = r'./object/'  # 찾고자 하는 그림파일이 들어있는 폴더
 find_dir = r'./find/'   # 찾은 그림 파일이 들어있는 폴더
+man_obj_dir = r'./man_object/'  ##@@ 찾고자 하는 '직접 캡쳐한' 그림파일이 들어있는 폴더
 
 # OpenCV로 기능에서 이미지 (매칭)검색할 때 찾는 방법을 정의.
 # TM_CCOEFF_NORMED - 정규화된 상관계수 방법 (요것 만 활성화, 딴 건 잘 못찾아서...)
@@ -205,14 +209,18 @@ class MyWindow(QWidget):
         self.doc_button_group.setFixedWidth(250)
         self.doc_button_layout = QVBoxLayout()
         self.doc_button = []    # Documentation 을 위한 버튼을 List로 관리합니다. 앞으로 많아질 것같아서... (현재 총 11개)
-        self.doc_button_name = ['Inspection\nAgreement','Inspection\nReport','Report','Report','Report',
+        self.doc_button_name = ['Inspection\nAgreement','Inspection\nReport','Sample\nNotice','PSW','Report',
                                 'Report','Report','Report','Report','Report','Report']
+        
         for idx, self.doc_button_name in enumerate(self.doc_button_name):
             self.doc_button.append(QPushButton(self.doc_button_name))
             self.doc_button[idx].setFixedHeight(35)
             self.doc_button_layout.addWidget(self.doc_button[idx])
+
         self.doc_button[0].clicked.connect(self.doc_agreement_build)
-        self.doc_button[1].clicked.connect(self.doc_sample_notice_build)
+        self.doc_button[1].clicked.connect(self.doc_report_build)
+        self.doc_button[2].clicked.connect(self.doc_sample_notice_build)
+        self.doc_button[3].clicked.connect(self.doc_PWS_build)
         self.doc_button_group.setLayout(self.doc_button_layout)
         layout.addWidget(self.doc_button_group,5,3,8,1)
 
@@ -361,6 +369,7 @@ class MyWindow(QWidget):
 
         
         png_files = glob.glob('result/*.png')
+
         for png_file in png_files:
             try:
                 os.remove(png_file)
@@ -377,6 +386,7 @@ class MyWindow(QWidget):
         self.images = [cv2.imread(file) for file in glob.glob(img_dir + "/*.png")]
 
         filename = "{}.png".format(os.getpid())
+
         for i in range(0,len(self.onlyfiles)):
             cv2.imwrite(filename, self.images[i])
             pic = QPixmap(filename)
@@ -510,6 +520,7 @@ class MyWindow(QWidget):
     # Table (DB)에 열을 삭제 합니다. 추가할 때 Line Editor의 값들을 가져 옵니다.
     # Dataframe의 값을 먼저 업데이트하고... Table Widget에 값을 뿌려줍니다.
     # 그리고 CSV 파일도 업데이트 합니다.
+
     def delete_row(self):
         self.terminal_browser.append("Row["+str(self.data_table_pjt.currentRow()+1)+ "] Deleted")
         self.df = self.df.drop(self.data_table_pjt.currentRow())
@@ -560,19 +571,96 @@ class MyWindow(QWidget):
     def closeEvent(self, event):
         sys.exit(app.exec_())
 
+
+    def set_file_name(self, full_file_name):
+
+        ##@@ build file I/O function by regular expression
+
+        filename, file_extension = os.path.splitext(full_file_name[0])
+        RE_rule = re.compile('^.[a-z]+', re.I) ##@@ re.I (대소문자 무시)
+        file_extension_ = RE_rule.search(file_extension)
+        file_extension_ = file_extension_.group()
+
+        date_now = datetime.today().strftime('%Y%m%d')
+        write_file_name = filename + '_' +self.info_le[0].text() + '_rev' + self.info_le[2].text() +'_' + date_now + file_extension_
+        
+        self.write_file_name = write_file_name
+
+    def open_file(self):
+
+        QMessageBox.about(self, "Warning", '주의사항: 파일 생성 전, 생성할 차종 선택 필수')
+        fname = QFileDialog.getOpenFileName(self, 'Open file', './template/',)
+
+        return fname
+
+    def insert_image(self, load_wb, sheet_name, anchor, target_width, image_type):
+        
+        working_sheet = load_wb[sheet_name]
+        file_name = self.info_le[0].text() + '_rev' + self.info_le[2].text() + image_type
+        file_path = os.path.join(man_obj_dir,file_name)
+        
+
+        if os.path.isfile(file_path):
+
+            if working_sheet[anchor].value is not None:
+                
+                widthes = working_sheet[anchor].value
+                screening_widthes = map(int, widthes.replace('[','').replace(']','').replace(' ','').split(','))
+
+                for idx, image in enumerate(working_sheet._images):
+                    #print('읽어드리는 값', image.width)
+
+                    if image.width not in screening_widthes:
+
+                        print('이미지 삭제, 삭제하는 값', image.width)
+                        del working_sheet._images[idx]
+                        break
+                        
+                    else:
+                        pass
+
+            existing_image_widthes = []
+            
+            for image in working_sheet._images:
+                existing_image_widthes.append(image.width)
+
+            working_sheet[anchor] = str(existing_image_widthes)
+
+            img = openpyxl.drawing.image.Image(file_path)
+            scaller = img.width/target_width
+            img.height = img.height / scaller
+            img.width = target_width
+            img.anchor = anchor
+            
+            working_sheet.add_image(img)
+            print('도면 추출 이미지 추가 완료')
+
+            return load_wb
+                
+        else:
+            QMessageBox.about(self, "Warning", '도면 추출 이미지 파일이 없습니다.')
+            return load_wb
+            
+
     # 검서 협정서 만들기 버튼을 눌렀을 때...
     def doc_agreement_build(self):
-        QMessageBox.about(self, "Warning", '주의사항: 파일 생성 전, 생성할 차종 선택 필수')
-        fname = QFileDialog.getOpenFileName(self, 'Open file', './template/')
-        file_save = fname[0]
-        file_type = '.xlsx'
-        self.terminal_browser.append(str(fname[0]))
-        load_wb = load_workbook(fname[0], data_only=True)
-        load_ws = load_wb['as']
+
+        fname = self.open_file()
+        sheet_name = 'as'
+
+        if bool(fname[0]):
+            self.terminal_browser.append(str(fname[0]))
+            load_wb = load_workbook(fname[0], data_only=False) #### data_only=False for excel formulation
+            load_ws = load_wb[sheet_name]
+        
+        else:
+            QMessageBox.about(self, "Warning", '템플릿을 선택하세요')
+            return
+
         ## 검사 협정서 부분 ##
         load_ws['B2'] = self.info_le[8].text() #MANDO P/N
         load_ws['B3'] = self.info_le[0].text() #Project name
-        load_ws['B5'] = self.info_le[3].text() #+' (' +data[4]+')' #EO No. & Rev.date
+        load_ws['B5'] = self.info_le[3].text() +' (' + self.info_le[4].text()+')' #EO No. & Rev.date
         load_ws['B6'] = self.info_le[12].text() # Working Date
         load_ws['B7'] = self.info_le[5].text() # Rev. History
         load_ws['B8'] = self.info_le[2].text() # Rev. ver.
@@ -590,30 +678,116 @@ class MyWindow(QWidget):
              load_cover['D15'] = load_cover['D18'].value
              load_cover['D18'] = load_ws['G3'].value + ' (Rev'+load_ws['B8'].value +')'
         except:
-             print('검사협정서 아님')
+             print('검사성적서 입니다.')
 
-        if fname[0][-1] == 'X' or fname[0][-1] == 'x' :
-            file_save = fname[0][:-5]
-            file_type = '.xlsx'
-            
-        elif fname[0][-1] == 'S' or fname[0][-1] == 's':
-            file_save = fname[0][:-4]
-            file_type = '.xls'
-        self.terminal_browser.append(file_save)
-        #date_now = datetime.today().strftime(\"%Y%m%d\")
-        
-        write_wb = file_save + '_' +self.info_le[0].text() + '_rev' + self.info_le[2].text() +'_' + file_type
-        
-        print(write_wb)
-        load_wb.save(write_wb)
-        
-        self.terminal_browser.append(write_wb + "saved")
+        ##@@ Image insert 진행 중
 
-    # 공사중...
+        sheet_name = 'S36_EK(A)'
+        anchor = 'L24'
+        target_width = 270
+        image_type = '_contents.jpg'
+        load_wb = self.insert_image(load_wb, sheet_name, anchor, target_width, image_type)
+        
+        self.set_file_name(fname)  ##@@ build file I/O function by regular expression
+        load_wb.save(self.write_file_name)
+        self.terminal_browser.append(self.write_file_name + " is saved")
+        
+
+    def doc_report_build(self):
+        self.doc_agreement_build()
+
+
     def doc_sample_notice_build(self):
-        QMessageBox.about(self, "Warning", '주의사항: 파일 생성 전, 생성할 차종 선택 필수')
-        fname = QFileDialog.getOpenFileName(self)
-        self.terminal_browser.append(str(fname))
+
+        fname = self.open_file()
+        sheet_name = 'BOX식별표'
+        
+        if bool(fname[0]):
+            self.terminal_browser.append(str(fname[0]))
+            load_wb = load_workbook(fname[0], data_only=False) #### data_only=False for excel formulation
+            load_ws = load_wb[sheet_name]
+        
+        else:
+            QMessageBox.about(self, "Warning", '템플릿을 선택하세요')
+            return
+
+        load_ws['B7'] = '★ '+self.info_le[0].text()+' ★'
+        load_ws['I21'] = self.info_le[2].text()
+        load_ws['B23'] = self.info_le[5].text()
+        
+        sheet_name = '초도품 적용 통보서'
+        load_ws = load_wb[sheet_name]
+        
+        ## 초도품 적용 통보서 ##
+        load_ws['H5'] = self.info_le[8].text() #MANDO P/N
+        load_ws['H4'] = self.info_le[0].text() #Project name
+        load_ws['L6'] = '■ 기타 : ' + self.info_le[5].text() # Rev. History
+        
+        #load_ws['B5'] = data[3] +'\n(' +data[4]+')' #EO No. & Rev.date
+        #load_ws['B6'] = data[12] # Working Date
+        
+        load_ws['C11'] = load_ws['L11'].value
+        load_ws['C12'] = load_ws['L12'].value
+        load_ws['C13'] = load_ws['L13'].value
+        load_ws['C14'] = load_ws['L14'].value
+        load_ws['C15'] = load_ws['L15'].value
+        
+        load_ws['L11'] = "- 도면 Revision No. : "+ self.info_le[2].text()
+        load_ws['L12'] = "- MANDO P/No : "+ self.info_le[8].text()
+        load_ws['L13'] = "- H/W, S/W Ver "+ self.info_le[6].text()
+        load_ws['L14'] = "- GP-12 식별 마크 : "+ self.info_le[11].text()
+        load_ws['L15'] = "- Project name : "+ self.info_le[0].text()
+
+
+        #sheet_name = '초도품 적용 통보서'
+        anchor = 'P11'
+        target_width = 260
+        image_type = '_contents.jpg'
+        load_wb = self.insert_image(load_wb, sheet_name, anchor, target_width, image_type)
+        
+        self.set_file_name(fname)  ##@@ build file I/O function by regular expression
+        load_wb.save(self.write_file_name)
+
+        #sheet_name = '초도품 적용 통보서'
+        anchor = 'P18'
+        target_width = 260
+        image_type = '_revision.jpg'
+        load_wb = self.insert_image(load_wb, sheet_name, anchor, target_width, image_type)
+
+        self.set_file_name(fname)  ##@@ build file I/O function by regular expression
+        load_wb.save(self.write_file_name)
+
+        self.terminal_browser.append(self.write_file_name + " is saved")
+
+    ##@@ Template 재생성 필요. (한글 Template)    
+    def doc_PWS_build(self):
+        
+        fname = self.open_file()
+        sheet_name = 'PSW'
+        
+        if bool(fname[0]):
+            self.terminal_browser.append(str(fname[0]))
+            load_wb = load_workbook(fname[0], data_only=False, keep_vba=True) #### data_only=False for excel formulation
+            load_ws = load_wb[sheet_name]
+        
+        else:
+            QMessageBox.about(self, "Warning", '템플릿을 선택하세요')
+            return
+
+        load_ws['R4'] = self.info_le[8].text()  # MANDO P/N
+        load_ws['R7'] = self.info_le[9].text()  # MHE   P/N
+        load_ws['G10'] = self.info_le[2].text() # Rev. ver.
+        load_ws['R10'] = self.info_le[3].text() # Rev. date.
+        #load_ws['S10'] = self.info_le[3].text() # Rev. date.
+        load_ws['O27'] = self.info_le[0].text() # Proj. name
+        load_ws['H75'] = self.info_le[5].text() # Rev. History
+        load_ws['V81'] = self.info_le[12].text() # Working Date
+        #load_ws['Y81'] = self.info_le[12].text() # Working Date
+
+        self.set_file_name(fname)  ##@@ build file I/O function by regular expression
+        load_wb.save(self.write_file_name)
+        self.terminal_browser.append(self.write_file_name + " is saved")
+
 
 if __name__ == "__main__":
     app = QApplication.instance()
