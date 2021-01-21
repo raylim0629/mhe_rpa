@@ -39,7 +39,7 @@ import win32gui
 #import win32con
 #import win32api
 import win32com
-import pyglet
+#import pyglet
 #from pyglet.window import mouse, key
 from pynput import mouse
 
@@ -201,7 +201,7 @@ class MyWindow(QWidget):
             self.info_le[idx].setFixedHeight(20)
             self.info_layout.addWidget(self.info_le[idx],(idx),1,1,2)
         self.info_group.setLayout(self.info_layout)
-        layout.addWidget(self.info_group,5,2,8,1)
+        layout.addWidget(self.info_group,5,2,7,1)
 
         # documentation button
         # 문서를 출력하기 위한 버튼 모음 입니다.
@@ -214,7 +214,7 @@ class MyWindow(QWidget):
         
         for idx, self.doc_button_name in enumerate(self.doc_button_name):
             self.doc_button.append(QPushButton(self.doc_button_name))
-            self.doc_button[idx].setFixedHeight(35)
+            self.doc_button[idx].setFixedHeight(32)
             self.doc_button_layout.addWidget(self.doc_button[idx])
 
         self.doc_button[0].clicked.connect(self.doc_agreement_build)
@@ -222,7 +222,17 @@ class MyWindow(QWidget):
         self.doc_button[2].clicked.connect(self.doc_sample_notice_build)
         self.doc_button[3].clicked.connect(self.doc_PWS_build)
         self.doc_button_group.setLayout(self.doc_button_layout)
-        layout.addWidget(self.doc_button_group,5,3,8,1)
+        layout.addWidget(self.doc_button_group,5,3,7,1)
+
+        # 문서를 출력하기 위한 버튼 모음 입니다.
+        self.selenium_button_group = QGroupBox('Selenium Buttons')
+        #self.selenium_button_group.setFixedWidth(500)
+        self.selenium_button_layout = QGridLayout()
+        self.selenium_button_mail = QPushButton("Mail")
+        self.selenium_button_mail.clicked.connect(self.mail_document)
+        self.selenium_button_layout.addWidget(self.selenium_button_mail,0,0,1,1)
+        self.selenium_button_group.setLayout(self.selenium_button_layout)
+        layout.addWidget(self.selenium_button_group,12,2,1,3)
 
         # data table
         # Data들을 관리하기 위한 테이블 입니다. (DB 관리용)
@@ -823,6 +833,40 @@ class MyWindow(QWidget):
         self.set_file_name(fname)  ##@@ build file I/O function by regular expression
         load_wb.save(self.write_file_name)
         self.terminal_browser.append(self.write_file_name + " is saved")
+
+    def mail_document(self):
+        self.mail_dialog = QDialog()
+        self.mail_dialog.setWindowTitle('Dialog')
+        self.mail_dialog.setWindowModality(Qt.ApplicationModal)
+        self.mail_dialog.resize(600, 800)
+
+        mail_button1 = QPushButton("Mail",self.mail_dialog)
+        mail_button1.move(250,50)
+        mail_button1.clicked.connect(self.mail_blabla)
+        mail_button2 = QPushButton("Mail",self.mail_dialog)
+        mail_button2.move(250,100)
+        mail_button3 = QPushButton("Mail",self.mail_dialog)
+        mail_button3.move(250,150)
+        mail_button4 = QPushButton("Mail",self.mail_dialog)
+        mail_button4.move(250,200)
+        mail_le1 = QLineEdit("Mail",self.mail_dialog)
+        mail_le1.move(50,50)
+        mail_le2 = QLineEdit("Mail",self.mail_dialog)
+        mail_le2.move(50,100)
+        mail_le3 = QLineEdit("Mail",self.mail_dialog)
+        mail_le3.move(50,150)
+        mail_le4 = QLineEdit("Mail",self.mail_dialog)
+        mail_le4.move(50,200)
+
+        self.mail_dialog.show()
+        return
+
+    def mail_blabla(self):
+        # 원하는 기능을 넣으세요.
+        QMessageBox.about(self,"블라블라", "블라블라")
+
+        return
+
 
 
 if __name__ == "__main__":
