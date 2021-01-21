@@ -43,6 +43,8 @@ import win32com
 #from pyglet.window import mouse, key
 from pynput import mouse
 
+import qd_event
+
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요. 
 path = r'./source/'     # 도면이 들어있는 폴더 
@@ -62,14 +64,6 @@ dpi_list = ['100','200','300','400','800','1600']
 
 # Tesseract 이미지 to 문자 변환 Option 입니다. (영어 + 한글) 
 custom_config = r'-l eng+kor'
-
-# class MyException(Exception): pass
-def on_click(x, y, button, pressed):
-    if button == mouse.Button.left:
-        if pressed:
-            pass
-        else:
-            raise Exception(button)
 
 class MyWindow(QWidget):  
     def __init__(self):
@@ -312,13 +306,8 @@ class MyWindow(QWidget):
                 time.sleep(0.1)
                 shell.SendKeys('M')
           
-                # Collect events until released
-                with mouse.Listener(on_click=on_click) as listener:
-                    try:
-                        listener.join()
-                    except Exception as e:
-                        print('{0} was clicked'.format(e.args[0]))
-                time.sleep(0.1)
+                # Collect mouse events until released
+                qd_event.mouse_listener()
                 win32gui.SetForegroundWindow(adobe_reader_window_id)
                 shell.SendKeys('{F10}')
                 time.sleep(0.1)
@@ -326,14 +315,8 @@ class MyWindow(QWidget):
                 time.sleep(0.1)
                 shell.SendKeys('A')
                 
-                # Collect events until released
-                with mouse.Listener(on_click=on_click) as listener:
-                    try:
-                        listener.join()
-                    except Exception as e:
-                        print('{0} was clicked'.format(e.args[0]))
-                time.sleep(0.1)
-
+                # Collect mouse events until released
+                qd_event.mouse_listener()
                 mspaint = Application(backend="uia").start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_dir)
                 mspaint.connect(path = 'C:\Windows\system32\mspaint.exe')
                 # mspaint_window_id = win32gui.FindWindow(None,"그림판")
@@ -346,7 +329,7 @@ class MyWindow(QWidget):
                 time.sleep(0.1)
                 shell.SendKeys("^s",0)
                 time.sleep(0.1)
-                shell.SendKeys(os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d') + ".png")
+                shell.SendKeys(os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d_%H%M%S') + ".png")
                 time.sleep(3)
                 shell.SendKeys("{ENTER}")
                 time.sleep(3)
