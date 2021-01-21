@@ -599,7 +599,6 @@ class MyWindow(QWidget):
         file_name = self.info_le[0].text() + '_rev' + self.info_le[2].text() + image_type
         file_path = os.path.join(man_obj_dir,file_name)
         
-
         if os.path.isfile(file_path):
 
             if working_sheet[anchor].value is not None:
@@ -649,7 +648,7 @@ class MyWindow(QWidget):
         sheet_name = 'as'
 
         if bool(fname[0]):
-            self.terminal_browser.append(str(fname[0]))
+            #self.terminal_browser.append(str(fname[0]))
             load_wb = load_workbook(fname[0], data_only=False) #### data_only=False for excel formulation
             load_ws = load_wb[sheet_name]
         
@@ -660,7 +659,7 @@ class MyWindow(QWidget):
         ## 검사 협정서 부분 ##
         load_ws['B2'] = self.info_le[8].text() #MANDO P/N
         load_ws['B3'] = self.info_le[0].text() #Project name
-        load_ws['B5'] = self.info_le[3].text() +' (' + self.info_le[4].text()+')' #EO No. & Rev.date
+        load_ws['B5'] = self.info_le[3].text() +'\n (' + self.info_le[4].text()+')' #EO No. & Rev.date
         load_ws['B6'] = self.info_le[12].text() # Working Date
         load_ws['B7'] = self.info_le[5].text() # Rev. History
         load_ws['B8'] = self.info_le[2].text() # Rev. ver.
@@ -672,21 +671,78 @@ class MyWindow(QWidget):
         load_ws['G5'] = 'SUPPLIER P/N : ' + self.info_le[9].text()
         load_ws['G6'] = 'OEM P/N : ' + self.info_le[7].text()
 
-        ## cover 시트 부분 ##
+        ##@@ 검사 협정서 only
         try:
-             load_cover = load_wb['COVER']
-             load_cover['D15'] = load_cover['D18'].value
-             load_cover['D18'] = load_ws['G3'].value + ' (Rev'+load_ws['B8'].value +')'
+            ## cover 시트 부분 ##
+            load_cover = load_wb['COVER']
+            load_cover['D15'] = load_cover['D18'].value
+            load_cover['D18'] = load_ws['G3'].value + ' (Rev'+load_ws['B8'].value +')'
+
+            ##@@ revision history 시트 부분 ##
+            load_history = load_wb['S35_EK(Revision History)']
+            
+            ##@@ 5 ~ 25
+            start_row = 5
+            end_row = 25
+
+            start_col = 2
+            end_col = 4
+            
+            rows = [row for row in range(start_row, end_row+1) ]
+            cols = [col for col in range(start_col, end_col+1) ]
+
+            excape_loop = False
+
+            for row_ in rows:
+
+                if excape_loop:
+                    break
+
+
+                for col_ in cols:
+
+                    print(load_history.cell(row = row_, column=col_).value)
+
+                    if load_history.cell(row =row_, column=col_).value is None:
+                        
+                        
+                        load_history.cell(row = row_, column=col_).value = self.info_le[2].text() # Rev. ver.
+                        load_history.cell(row = row_, column=col_+1).value = self.info_le[3].text() + '(' + self.info_le[4].text()+')' #EO No. & Rev.date 
+                        load_history.cell(row = row_, column=col_+2).value = self.info_le[5].text() # Rev. History
+
+                        excape_loop = True
+
+                        if load_history.cell(row =row_-1, column=end_col+1).value is None:      ##@@ end_col+1 : signiture
+                            
+                            load_history.cell(row = row_-1, column=end_col+1).value = 'SIGNED'
+                            load_history.cell(row = row_-1, column=end_col+2).value = 'SIGNED'
+                            load_history.cell(row = row_-1, column=end_col+3).value = 'SIGNED'
+                            break
+
+                        else:
+                            break
+                        
+
+            '''
+            B5 ##@@ Revision No.
+            C5 ##@@ EO date
+            D5 ##@@ Reasons for revision
+            E5 ##@@ signiture (Prepared)
+            F5 ##@@ signiture (Reviewed)
+            G5 ##@@ signiture (Approved)
+            '''            
+
+            ##@@ Image insert 부분
+            load_ws = load_wb['COVER']
+
+            sheet_name = 'S36_EK(A)'
+            anchor = 'L24'
+            target_width = 270
+            image_type = '_contents.jpg'
+            load_wb = self.insert_image(load_wb, sheet_name, anchor, target_width, image_type)
+        
         except:
              print('검사성적서 입니다.')
-
-        ##@@ Image insert 진행 중
-
-        sheet_name = 'S36_EK(A)'
-        anchor = 'L24'
-        target_width = 270
-        image_type = '_contents.jpg'
-        load_wb = self.insert_image(load_wb, sheet_name, anchor, target_width, image_type)
         
         self.set_file_name(fname)  ##@@ build file I/O function by regular expression
         load_wb.save(self.write_file_name)
@@ -703,7 +759,7 @@ class MyWindow(QWidget):
         sheet_name = 'BOX식별표'
         
         if bool(fname[0]):
-            self.terminal_browser.append(str(fname[0]))
+            #self.terminal_browser.append(str(fname[0]))
             load_wb = load_workbook(fname[0], data_only=False) #### data_only=False for excel formulation
             load_ws = load_wb[sheet_name]
         
@@ -766,7 +822,7 @@ class MyWindow(QWidget):
         sheet_name = 'PSW'
         
         if bool(fname[0]):
-            self.terminal_browser.append(str(fname[0]))
+            #self.terminal_browser.append(str(fname[0]))
             load_wb = load_workbook(fname[0], data_only=False, keep_vba=True) #### data_only=False for excel formulation
             load_ws = load_wb[sheet_name]
         
