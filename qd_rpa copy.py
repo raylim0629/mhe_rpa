@@ -8,11 +8,7 @@
 
 from contextlib import nullcontext
 import sys
-from tkinter.constants import HIDDEN
 import warnings
-
-from numpy.lib.function_base import select
-from numpy.lib.histograms import histogram
 warnings.simplefilter("ignore", UserWarning)
 sys.coinit_flags = 2
 import glob
@@ -29,7 +25,7 @@ from pdf2image import convert_from_path
 from os.path import isfile, join
 from os import listdir
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import QCoreApplication, QLine, Qt
+from PyQt5.QtCore import QCoreApplication, Qt
 from PyQt5.QtGui import *
 from pptx import Presentation
 from pptx.util import Inches
@@ -49,16 +45,6 @@ import win32com
 from pynput import mouse
 import qd_event
 import ctypes
-
-##@@ Libraries for Email & Web ####
-
-import requests
-from bs4 import BeautifulSoup
-from selenium import webdriver
-
-########################################
-
-
 
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요. 
@@ -901,101 +887,36 @@ class MyWindow(QWidget):
         self.terminal_browser.append(self.write_file_name + " is saved")
 
     def mail_document(self):
-        
         self.mail_dialog = QDialog()
         self.mail_dialog.setWindowTitle('Dialog')
         self.mail_dialog.setWindowModality(Qt.ApplicationModal)
         self.mail_dialog.resize(600, 800)
 
-        self.email_layout = QGridLayout()
-        self.email_labels = ['ID','password','Receivers','CC','Subject','E-mail Body']
-        self.email_loc_le = []
-
-        ##@@ input 메세지에 대해서 set하는 handler 설정 필요 (enter 없이)
-        ##@@ 수정 필요 self.idx => idx
-        for self.idx, label_ in enumerate(self.email_labels):
-
-            self.email_layout.addWidget(QLabel(self.email_labels[self.idx],self),(self.idx),0,1,1)
-            self.email_loc_le.append(QLineEdit(self))
-            self.email_loc_le[self.idx].setFixedHeight(20)
-            self.email_loc_le[self.idx].textChanged.connect(self.onChanged)
-            self.email_layout.addWidget(self.email_loc_le[self.idx],(self.idx),1,1,2)
-        
-        self.email_loc_le[0].setPlaceholderText('hclee')
-        self.email_loc_le[1].setPlaceholderText('**********')
-        self.email_loc_le[1].setEchoMode(QLineEdit.Password)
-        #self.email_loc_le[2].set()
-
-        
-        self.login_button_select = QPushButton('Log in')
-        self.login_button_select.clicked.connect(self.login)
-        
-        self.email_layout.addWidget(self.login_button_select, 7, 0, 1, 2)
-        self.mail_dialog.setLayout(self.email_layout)
+        mail_button1 = QPushButton("Mail",self.mail_dialog)
+        mail_button1.move(250,50)
+        mail_button1.clicked.connect(self.mail_blabla)
+        mail_button2 = QPushButton("Mail",self.mail_dialog)
+        mail_button2.move(250,100)
+        mail_button3 = QPushButton("Mail",self.mail_dialog)
+        mail_button3.move(250,150)
+        mail_button4 = QPushButton("Mail",self.mail_dialog)
+        mail_button4.move(250,200)
+        mail_le1 = QLineEdit("Mail",self.mail_dialog)
+        mail_le1.move(50,50)
+        mail_le2 = QLineEdit("Mail",self.mail_dialog)
+        mail_le2.move(50,100)
+        mail_le3 = QLineEdit("Mail",self.mail_dialog)
+        mail_le3.move(50,150)
+        mail_le4 = QLineEdit("Mail",self.mail_dialog)
+        mail_le4.move(50,200)
 
         self.mail_dialog.show()
-
         return
-    
-    def onChanged(self):
-        
-        self.email_loc_le[self.idx].setText(self.email_loc_le[self.idx].text())
-    
-    def login(self):
-        
-        driver = webdriver.Chrome("D:/chrome_driver/chromedriver.exe")
 
-        url = "http://gw.mandohella.com"
-        driver.get(url)
-        driver.implicitly_wait(5) #최대 5초 기다림
+    def mail_blabla(self):
+        # 원하는 기능을 넣으세요.
+        QMessageBox.about(self,"블라블라", "블라블라")
 
-        xpath1 = "//input[@id='lvLogin_LoginID']"  # login - ID
-        driver.find_element_by_xpath(xpath1).send_keys(self.email_loc_le[0].text())
-
-        xpath2 = "//input[@id='lvLogin_Password']" # login - PW
-        driver.find_element_by_xpath(xpath2).send_keys(self.email_loc_le[1].text())
-        
-        xpath3 = "//a[@class='btn btn-info']"      # login - btn click
-        driver.find_element_by_xpath(xpath3).click()
-    
-        xpath4 = "//li[@class='gnb-menu  dropdown ']" # email - menu click
-        driver.find_element_by_xpath(xpath4).click()
-        
-        #p = driver.window_handles
-        
-        xpath5 = "//a[@class='btn btn-primary btn-round btn-width right-5']" # email - tab에서 "메일쓰기" - btn click
-        driver.find_element_by_xpath(xpath5).click()
-
-        driver.implicitly_wait(5)
-        
-        ## window switch ##
-        
-        chwnd = driver.window_handles     # 전체 창에 대한 요소를 배열로 저장
-        driver.switch_to.window(chwnd[-1]) # 최종 창 선택
-        time.sleep(5)
-        
-        
-        ## 메일 수신인 ##
-        xpath6 = "//input[@id='toInput']"
-        driver.find_element_by_xpath(xpath6).send_keys(self.email_loc_le[2].text())
-        
-        ## 메일 수신인:참조 ##
-        xpath7 = "//input[@id='ccInput']"
-        driver.find_element_by_xpath(xpath7).send_keys(self.email_loc_le[3].text())
-        
-        ## 메일 제목 ##
-        xpath8 = "//input[@id='tbSubject']"
-        driver.find_element_by_xpath(xpath8).send_keys(self.email_loc_le[4].text())
-        
-        ##@@ 메일 내용 작성에 대한 html 변환 code 추가 필요
-        ## 메일 내용 ##
-        xpath9 = "//body[@id='dext_body']"
-        driver.find_element_by_xpath(xpath9).send_keys(self.email_loc_le[5].text())
-        
-        ## 메일 보내기 ##
-        #xpath10 = "//a[@id='btSendMail']
-        #driver.find_element_by_xpath(xpath10).click()
-        
         return
 
 
