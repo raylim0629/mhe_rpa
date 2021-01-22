@@ -6,6 +6,7 @@
 #                   <hclee@mandohella.com>
 # Generated @ 2021.Jan.15th ~ 
 
+from contextlib import nullcontext
 import sys
 import warnings
 warnings.simplefilter("ignore", UserWarning)
@@ -73,7 +74,6 @@ class MyWindow(QWidget):
     def setupUI(self):
         # 전체 Layout은 Grid 형태 입니다.
         layout = QGridLayout()
-
         self.myMenuBar = QMenuBar(self)
         self.myMenuBar.setFixedHeight(25)
         self.myMenuBar.setNativeMenuBar(False)
@@ -133,6 +133,8 @@ class MyWindow(QWidget):
         self.finding_obj_label_1 = QLabel('object-image',self)
         self.finding_obj_label_1.setFixedSize(600,350)
         self.finding_obj_label_1.setAlignment(Qt.AlignCenter)
+        font = self.finding_obj_label_1.font()
+        font.setPointSize(40)
         self.finding_obj_label_1.setFont(font)
         self.finding_obj_label_2 = QLabel('object-image',self)
         self.finding_obj_label_2.setFixedSize(600,350)
@@ -300,7 +302,12 @@ class MyWindow(QWidget):
     def changeToImageButtonClicked(self):
         try:
             pages = convert_from_path(self.fname[0], dpi=int(self.drawing_combo.currentText()))
+        except AttributeError:
+            QMessageBox.about(self, "Warning", "파일을 선택되지 않았습니다.")
+            return
+            
         except:
+            print("Unexpected error:", sys.exc_info()[0])
             reply = QMessageBox.question(self, "Warning", "PDF 파일이 DRM에 걸려 있습니다. 직접 선택 영역을 직접 선택하시겠습니까?",
                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
@@ -309,7 +316,20 @@ class MyWindow(QWidget):
             self.finding_obj_label_2.setText('DRM')
 
             if reply == QMessageBox.Yes:
-                self.findAndCaptureDrmDrawing()
+                self.adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.fname[0])
+                self.adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
+                time.sleep(0.1)
+                self.adobe_reader_window_name = os.path.basename(self.fname[0]) + " - Adobe Reader"
+                self.adobe_reader_window_id = win32gui.FindWindow(None, self.adobe_reader_window_name)
+                self.terminal_browser.append(os.path.basename(self.fname[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
+                self.terminal_browser.append(os.path.basename("opened with PID: " + str(self.adobe_reader_window_id) + "name" + self.adobe_reader_window_name))
+                self.shell = win32com.client.Dispatch("WScript.Shell")
+
+                self.findAndCaptureDrmDrawing(page_no=1)
+                self.findAndCaptureDrmDrawing(page_no=2)
+
+                self.adobe_reader.kill()
+
                 return
             else:
                 return
@@ -341,41 +361,30 @@ class MyWindow(QWidget):
             os.remove(filename)
 
     # 도면에 DRM이 걸려 있을 경우...
-    def findAndCaptureDrmDrawing(self): 
-        adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.fname[0])
-        adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
+    def findAndCaptureDrmDrawing(self,page_no = 1): 
+
+        win32gui.SetForegroundWindow(self.adobe_reader_window_id)
         time.sleep(0.1)
-        adobe_reader_window_name = os.path.basename(self.fname[0]) + " - Adobe Reader"
-        adobe_reader_window_id = win32gui.FindWindow(None, adobe_reader_window_name)
-        self.terminal_browser.append(os.path.basename(self.fname[0]) + " - Adobe Reader" + " opened with PID: " + str(adobe_reader_window_id))
-        self.terminal_browser.append(os.path.basename("opened with PID: " + str(adobe_reader_window_id) + "name" + adobe_reader_window_name))
+
+        self.shell.SendKeys('^0',0)
 
         msg = ctypes.windll.user32.MessageBoxW(None, "도면에서 확대하고자하는 영역을 선택하세요.", "확대", 0x00040000)
 
-        win32gui.SetForegroundWindow(adobe_reader_window_id)
-        time.sleep(0.1)
-
-        shell = win32com.client.Dispatch("WScript.Shell")
-        shell.SendKeys('{F10}')
-        #time.sleep(0.1)
-        shell.SendKeys('V')
-        #time.sleep(0.1)
-        shell.SendKeys('Z')
-        #time.sleep(0.1)
-        shell.SendKeys('M')
+        self.shell.SendKeys('{F10}')
+        self.shell.SendKeys('V')
+        self.shell.SendKeys('Z')
+        self.shell.SendKeys('M')
 
         # Collect mouse events until released
         qd_event.mouse_listener()
 
         msg = ctypes.windll.user32.MessageBoxW(None, "도면에서 캡쳐하고자하는 영역을 선택하세요.", "캡쳐", 0x00040000)
 
-        win32gui.SetForegroundWindow(adobe_reader_window_id)
+        win32gui.SetForegroundWindow(self.adobe_reader_window_id)
 
-        shell.SendKeys('{F10}')
-        #time.sleep(0.1)
-        shell.SendKeys('E')
-        #time.sleep(0.1)
-        shell.SendKeys('A')
+        self.shell.SendKeys('{F10}')
+        self.shell.SendKeys('E')
+        self.shell.SendKeys('A')
 
         # Collect mouse events until released
         qd_event.mouse_listener()
@@ -387,23 +396,34 @@ class MyWindow(QWidget):
         time.sleep(0.1)
         win32gui.SetForegroundWindow(mspaint_window_id)
         time.sleep(0.1)
-        shell.SendKeys("^v",0)
+        self.shell.SendKeys("^v",0)
         time.sleep(0.1)
-        shell.SendKeys("^s",0)
+        self.shell.SendKeys("^s",0)
         time.sleep(0.1)
-        pic_name = os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d_%H%M%S') + ".png"
-        shell.SendKeys(pic_name)
+        if page_no == 1: 
+            self.pic_name_find1 = os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
+            self.shell.SendKeys(self.pic_name_find1)
+
+        elif page_no == 2: 
+            self.pic_name_find2 = os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
+            self.shell.SendKeys(self.pic_name_find2)
+
         time.sleep(3)
-        shell.SendKeys("{ENTER}")
+        self.shell.SendKeys("{ENTER}")
         time.sleep(3)
-        adobe_reader.kill()
         mspaint.kill()
         
-        pic = QPixmap()
-        pic.load(pic_name)
-        pic=pic.scaledToWidth(600)
-        self.finding_match_label_1.setPixmap(QPixmap(pic))
-        self.finding_match_label_2.setPixmap(QPixmap(pic))
+        if page_no == 1: 
+            pic = QPixmap(self.pic_name_find1)
+            #pic = pic.load(self.pic_name_find1)
+            pic = pic.scaledToWidth(600)
+            self.finding_match_label_1.setPixmap(QPixmap(pic))
+        elif page_no == 2:
+            pic = QPixmap(self.pic_name_find2)
+            #pic = pic.load(self.pic_name_find2)
+            pic = pic.scaledToWidth(600)
+            self.finding_match_label_2.setPixmap(QPixmap(pic))
+        
         return
 
     # 내가 찾고자 하는 그림을 선택하는 버튼...을 눌렀을 때 기능
@@ -487,6 +507,11 @@ class MyWindow(QWidget):
         self.terminal_browser.append(f'match late:' + str(round(final_match_val*100,4)) + "%")     
 
     def OcrButtonClicked(self):
+        text = pytesseract.image_to_string(Image.open(self.pic_name_find1)) 
+        text += pytesseract.image_to_string(Image.open(self.pic_name_find2))
+        text = text.replace("\n\n","\n")
+        text = text.replace(" \n","")
+        self.terminal_browser.append(text)
         return
 
     # 터미널 창을 깨끗하게...
@@ -584,6 +609,7 @@ class MyWindow(QWidget):
 
     # X 버튼을 눌렀을 때 ...
     def closeEvent(self, event):
+        QCoreApplication.instance().quit()
         sys.exit(app.exec_())
 
 
