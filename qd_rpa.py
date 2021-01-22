@@ -42,8 +42,8 @@ import win32com
 #import pyglet
 #from pyglet.window import mouse, key
 from pynput import mouse
-
 import qd_event
+import ctypes
 
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요. 
@@ -105,7 +105,10 @@ class MyWindow(QWidget):
         self.drawing_label = [QLabel('PDF-image',self) for i in range(10)]
         for idx, label in enumerate(self.drawing_label):
             label.setFixedSize(600,400)
-            label.setAlignment(Qt.AlignTop)
+            label.setAlignment(Qt.AlignCenter)
+            font = label.font()
+            font.setPointSize(40)
+            label.setFont(font)
             self.drawing_tabs.addTab(label, str(idx+1) + ' ')
         self.drawing_layout.addWidget(self.drawing_loc_le,0,0,1,4)
         self.drawing_layout.addWidget(self.drawing_combo,0,4,1,1)
@@ -125,18 +128,34 @@ class MyWindow(QWidget):
         self.finding_obj_btn.clicked.connect(self.findingButtonClicked)
         self.finding_anal_btn = QPushButton("찾아내기")
         self.finding_anal_btn.clicked.connect(self.analyzeButtonClicked)
-        self.finding_obj_label = QLabel('object-image',self)
-        self.finding_obj_label.setFixedSize(600,350)
-        self.finding_obj_label.setAlignment(Qt.AlignTop)
-        self.finding_match_label = QLabel('match-image',self)
-        self.finding_match_label.setFixedSize(600,350)
-        self.finding_match_label.setAlignment(Qt.AlignTop)        
+        self.finding_ocr_btn = QPushButton("OCR")
+        self.finding_ocr_btn.clicked.connect(self.OcrButtonClicked)
+        self.finding_obj_label_1 = QLabel('object-image',self)
+        self.finding_obj_label_1.setFixedSize(600,350)
+        self.finding_obj_label_1.setAlignment(Qt.AlignCenter)
+        self.finding_obj_label_1.setFont(font)
+        self.finding_obj_label_2 = QLabel('object-image',self)
+        self.finding_obj_label_2.setFixedSize(600,350)
+        self.finding_obj_label_2.setAlignment(Qt.AlignCenter)
+        self.finding_obj_label_2.setFont(font)        
+        self.finding_match_label_1 = QLabel('match-image',self)
+        self.finding_match_label_1.setFixedSize(600,350)
+        self.finding_match_label_1.setAlignment(Qt.AlignCenter)
+        self.finding_match_label_1.setFont(font)        
+        self.finding_match_label_2 = QLabel('match-image',self)
+        self.finding_match_label_2.setFixedSize(600,350)
+        self.finding_match_label_2.setAlignment(Qt.AlignCenter)
+        self.finding_match_label_2.setFont(font)
+
         self.finding_tabs = QTabWidget()
-        self.finding_tabs.addTab(self.finding_obj_label, 'finding_obj')
-        self.finding_tabs.addTab(self.finding_match_label, 'found_match')
-        self.finding_layout.addWidget(self.finding_le,0,0,1,4)
-        self.finding_layout.addWidget(self.finding_obj_btn,0,4,1,1)
-        self.finding_layout.addWidget(self.finding_anal_btn,0,5,1,1)
+        self.finding_tabs.addTab(self.finding_obj_label_1, 'finding_obj_1')
+        self.finding_tabs.addTab(self.finding_match_label_1, 'found_match_1')
+        self.finding_tabs.addTab(self.finding_obj_label_2, 'finding_obj_2')
+        self.finding_tabs.addTab(self.finding_match_label_2, 'found_match_2')
+        self.finding_layout.addWidget(self.finding_le,0,0,1,3)
+        self.finding_layout.addWidget(self.finding_obj_btn,0,3,1,1)
+        self.finding_layout.addWidget(self.finding_anal_btn,0,4,1,1)
+        self.finding_layout.addWidget(self.finding_ocr_btn,0,5,1,1)
         self.finding_layout.addWidget(self.finding_tabs,1,0,6,6)
         self.finding_group.setLayout(self.finding_layout)
         layout.addWidget(self.finding_group,6,0,7,1)
@@ -261,7 +280,7 @@ class MyWindow(QWidget):
 
         # GUI 
         # 세팅을 끝내고 뿌려줍니다...
-        self.setGeometry(50, 50, 800, 800)
+        self.setGeometry(30, 50, 800, 800)
         self.setWindowTitle("Drawing Analyzer")
         self.setLayout(layout)
         self.show() 
@@ -285,58 +304,13 @@ class MyWindow(QWidget):
             reply = QMessageBox.question(self, "Warning", "PDF 파일이 DRM에 걸려 있습니다. 직접 선택 영역을 직접 선택하시겠습니까?",
                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
-            if reply == QMessageBox.Yes:        
-                adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.fname[0])
-                adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
-                time.sleep(0.1)
-                adobe_reader_window_name = os.path.basename(self.fname[0]) + " - Adobe Reader"
-                adobe_reader_window_id = win32gui.FindWindow(None, adobe_reader_window_name)
-                self.terminal_browser.append(os.path.basename(self.fname[0]) + " - Adobe Reader" + " opened with PID: " + str(adobe_reader_window_id))
-                self.terminal_browser.append(os.path.basename("opened with PID: " + str(adobe_reader_window_id) + "name" + adobe_reader_window_name))
+            self.drawing_label[0].setText('DRM')
+            self.finding_obj_label_1.setText('DRM')
+            self.finding_obj_label_2.setText('DRM')
 
-                win32gui.SetForegroundWindow(adobe_reader_window_id)
-                time.sleep(0.1)
-
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shell.SendKeys('{F10}')
-                time.sleep(0.1)
-                shell.SendKeys('V')
-                time.sleep(0.1)
-                shell.SendKeys('Z')
-                time.sleep(0.1)
-                shell.SendKeys('M')
-          
-                # Collect mouse events until released
-                qd_event.mouse_listener()
-                win32gui.SetForegroundWindow(adobe_reader_window_id)
-                shell.SendKeys('{F10}')
-                time.sleep(0.1)
-                shell.SendKeys('E')
-                time.sleep(0.1)
-                shell.SendKeys('A')
-                
-                # Collect mouse events until released
-                qd_event.mouse_listener()
-                mspaint = Application(backend="uia").start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_dir)
-                mspaint.connect(path = 'C:\Windows\system32\mspaint.exe')
-                # mspaint_window_id = win32gui.FindWindow(None,"그림판")
-                mspaint_window_id = win32gui.GetForegroundWindow()
-                print(mspaint_window_id)
-                time.sleep(0.1)
-                win32gui.SetForegroundWindow(mspaint_window_id)
-                time.sleep(0.1)
-                shell.SendKeys("^v",0)
-                time.sleep(0.1)
-                shell.SendKeys("^s",0)
-                time.sleep(0.1)
-                shell.SendKeys(os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d_%H%M%S') + ".png")
-                time.sleep(3)
-                shell.SendKeys("{ENTER}")
-                time.sleep(3)
-                adobe_reader.kill()
-                mspaint.kill()
+            if reply == QMessageBox.Yes:
+                self.findAndCaptureDrmDrawing()
                 return
-
             else:
                 return
 
@@ -366,6 +340,72 @@ class MyWindow(QWidget):
             self.drawing_label[i].setPixmap(QPixmap(pic))
             os.remove(filename)
 
+    # 도면에 DRM이 걸려 있을 경우...
+    def findAndCaptureDrmDrawing(self): 
+        adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.fname[0])
+        adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
+        time.sleep(0.1)
+        adobe_reader_window_name = os.path.basename(self.fname[0]) + " - Adobe Reader"
+        adobe_reader_window_id = win32gui.FindWindow(None, adobe_reader_window_name)
+        self.terminal_browser.append(os.path.basename(self.fname[0]) + " - Adobe Reader" + " opened with PID: " + str(adobe_reader_window_id))
+        self.terminal_browser.append(os.path.basename("opened with PID: " + str(adobe_reader_window_id) + "name" + adobe_reader_window_name))
+
+        msg = ctypes.windll.user32.MessageBoxW(None, "도면에서 확대하고자하는 영역을 선택하세요.", "확대", 0x00040000)
+
+        win32gui.SetForegroundWindow(adobe_reader_window_id)
+        time.sleep(0.1)
+
+        shell = win32com.client.Dispatch("WScript.Shell")
+        shell.SendKeys('{F10}')
+        #time.sleep(0.1)
+        shell.SendKeys('V')
+        #time.sleep(0.1)
+        shell.SendKeys('Z')
+        #time.sleep(0.1)
+        shell.SendKeys('M')
+
+        # Collect mouse events until released
+        qd_event.mouse_listener()
+
+        msg = ctypes.windll.user32.MessageBoxW(None, "도면에서 캡쳐하고자하는 영역을 선택하세요.", "캡쳐", 0x00040000)
+
+        win32gui.SetForegroundWindow(adobe_reader_window_id)
+
+        shell.SendKeys('{F10}')
+        #time.sleep(0.1)
+        shell.SendKeys('E')
+        #time.sleep(0.1)
+        shell.SendKeys('A')
+
+        # Collect mouse events until released
+        qd_event.mouse_listener()
+
+        mspaint = Application(backend="uia").start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_dir)
+        mspaint.connect(path = 'C:\Windows\system32\mspaint.exe')
+        mspaint_window_id = win32gui.GetForegroundWindow()
+        print(mspaint_window_id)
+        time.sleep(0.1)
+        win32gui.SetForegroundWindow(mspaint_window_id)
+        time.sleep(0.1)
+        shell.SendKeys("^v",0)
+        time.sleep(0.1)
+        shell.SendKeys("^s",0)
+        time.sleep(0.1)
+        pic_name = os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d_%H%M%S') + ".png"
+        shell.SendKeys(pic_name)
+        time.sleep(3)
+        shell.SendKeys("{ENTER}")
+        time.sleep(3)
+        adobe_reader.kill()
+        mspaint.kill()
+        
+        pic = QPixmap()
+        pic.load(pic_name)
+        pic=pic.scaledToWidth(600)
+        self.finding_match_label_1.setPixmap(QPixmap(pic))
+        self.finding_match_label_2.setPixmap(QPixmap(pic))
+        return
+
     # 내가 찾고자 하는 그림을 선택하는 버튼...을 눌렀을 때 기능
     def findingButtonClicked(self):
         filename = "{}.png".format(os.getpid())
@@ -377,7 +417,7 @@ class MyWindow(QWidget):
             cv2.imwrite(filename, self.obj)
             pic = QPixmap(filename)
             pic=pic.scaledToWidth(600)
-            self.finding_obj_label.setPixmap(QPixmap(pic))        
+            self.finding_obj_label_1.setPixmap(QPixmap(pic))        
             os.remove(filename)
         else:
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
@@ -425,7 +465,7 @@ class MyWindow(QWidget):
         pic = QPixmap(filename)
         pic.save(f'{find_dir}find_page.png','PNG')
         pic_display=pic.scaledToWidth(600)
-        self.finding_match_label.setPixmap(pic_display)
+        self.finding_match_label_1.setPixmap(pic_display)
         
         os.remove(filename)
 
@@ -445,6 +485,9 @@ class MyWindow(QWidget):
         print(top_left, final_match_val)
         self.terminal_browser.append(f'top:' + str(top_left[0]) + f'   left:' + str (top_left[1]))     
         self.terminal_browser.append(f'match late:' + str(round(final_match_val*100,4)) + "%")     
+
+    def OcrButtonClicked(self):
+        return
 
     # 터미널 창을 깨끗하게...
     def clear_text(self):
