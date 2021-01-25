@@ -136,30 +136,34 @@ class MyWindow(QWidget):
         # 원하는 그림을 찾고 OCR을 진행하기 위한 그룹입니다.
         self.finding_group = QGroupBox('find & OCR')
         self.finding_layout = QGridLayout()
-        self.finding_le = QLineEdit()
-        self.finding_le.setPlaceholderText('./object/')
-        self.finding_obj_btn = QPushButton("파일 선택")
-        self.finding_obj_btn.clicked.connect(self.findingButtonClicked)
+        self.finding_le_1 = QLineEdit()
+        self.finding_le_1.setPlaceholderText('./object/')
+        self.finding_obj_btn_1 = QPushButton("파일 선택-1")
+        self.finding_obj_btn_1.clicked.connect(self.findingButtonClicked_1)
+        self.finding_le_2 = QLineEdit()
+        self.finding_le_2.setPlaceholderText('./object/')
+        self.finding_obj_btn_2 = QPushButton("파일 선택-2")
+        self.finding_obj_btn_2.clicked.connect(self.findingButtonClicked_2)
         self.finding_anal_btn = QPushButton("찾아내기")
         self.finding_anal_btn.clicked.connect(self.analyzeButtonClicked)
         self.finding_ocr_btn = QPushButton("OCR")
         self.finding_ocr_btn.clicked.connect(self.OcrButtonClicked)
         self.finding_obj_label_1 = QLabel('object-image',self)
-        self.finding_obj_label_1.setFixedSize(600,350)
+        self.finding_obj_label_1.setFixedSize(600,300)
         self.finding_obj_label_1.setAlignment(Qt.AlignCenter)
         font = self.finding_obj_label_1.font()
         font.setPointSize(40)
         self.finding_obj_label_1.setFont(font)
         self.finding_obj_label_2 = QLabel('object-image',self)
-        self.finding_obj_label_2.setFixedSize(600,350)
+        self.finding_obj_label_2.setFixedSize(600,300)
         self.finding_obj_label_2.setAlignment(Qt.AlignCenter)
         self.finding_obj_label_2.setFont(font)        
         self.finding_match_label_1 = QLabel('match-image',self)
-        self.finding_match_label_1.setFixedSize(600,350)
+        self.finding_match_label_1.setFixedSize(600,300)
         self.finding_match_label_1.setAlignment(Qt.AlignCenter)
         self.finding_match_label_1.setFont(font)        
         self.finding_match_label_2 = QLabel('match-image',self)
-        self.finding_match_label_2.setFixedSize(600,350)
+        self.finding_match_label_2.setFixedSize(600,300)
         self.finding_match_label_2.setAlignment(Qt.AlignCenter)
         self.finding_match_label_2.setFont(font)
 
@@ -168,11 +172,13 @@ class MyWindow(QWidget):
         self.finding_tabs.addTab(self.finding_match_label_1, 'found_match_1')
         self.finding_tabs.addTab(self.finding_obj_label_2, 'finding_obj_2')
         self.finding_tabs.addTab(self.finding_match_label_2, 'found_match_2')
-        self.finding_layout.addWidget(self.finding_le,0,0,1,3)
-        self.finding_layout.addWidget(self.finding_obj_btn,0,3,1,1)
-        self.finding_layout.addWidget(self.finding_anal_btn,0,4,1,1)
-        self.finding_layout.addWidget(self.finding_ocr_btn,0,5,1,1)
-        self.finding_layout.addWidget(self.finding_tabs,1,0,6,6)
+        self.finding_layout.addWidget(self.finding_le_1,0,0,1,4)
+        self.finding_layout.addWidget(self.finding_obj_btn_1,0,4,1,1)
+        self.finding_layout.addWidget(self.finding_le_2,1,0,1,4)
+        self.finding_layout.addWidget(self.finding_obj_btn_2,1,4,1,1)
+        self.finding_layout.addWidget(self.finding_anal_btn,0,5,1,1)
+        self.finding_layout.addWidget(self.finding_ocr_btn,1,5,1,1)
+        self.finding_layout.addWidget(self.finding_tabs,2,0,5,6)
         self.finding_group.setLayout(self.finding_layout)
         layout.addWidget(self.finding_group,6,0,7,1)
 
@@ -441,14 +447,14 @@ class MyWindow(QWidget):
         return
 
     # 내가 찾고자 하는 그림을 선택하는 버튼...을 눌렀을 때 기능
-    def findingButtonClicked(self):
+    def findingButtonClicked_1(self):
         filename = "{}.png".format(os.getpid())
         self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', './object/')
         
         if self.finding_name:
-            self.finding_le.setText(self.finding_name[0])
-            self.obj = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
-            cv2.imwrite(filename, self.obj)
+            self.finding_le_1.setText(self.finding_name[0])
+            self.obj_1 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
+            cv2.imwrite(filename, self.obj_1)
             pic = QPixmap(filename)
             pic=pic.scaledToWidth(600)
             self.finding_obj_label_1.setPixmap(QPixmap(pic))        
@@ -457,20 +463,38 @@ class MyWindow(QWidget):
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
             return
 
+    def findingButtonClicked_2(self):
+        filename = "{}.png".format(os.getpid())
+        self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', './object/')
+        
+        if self.finding_name:
+            self.finding_le_2.setText(self.finding_name[0])
+            self.obj_2 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
+            cv2.imwrite(filename, self.obj_2)
+            pic = QPixmap(filename)
+            pic=pic.scaledToWidth(600)
+            self.finding_obj_label_2.setPixmap(QPixmap(pic))        
+            os.remove(filename)
+        else:
+            QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
+            return
+
+
+
     # 찾아낸 그림의 문자를 분석합니다...이미지 투 문자 (OCR)
     # 요게 잘 안되요... 업데이트가 필요합니다.
     def analyzeButtonClicked(self):
         #이미지 매칭 검색
-        filename = "{}.png".format(os.getpid())
+        filename_1 = "{}.png".format(os.getpid())
         final_match_val = 0
         match_val = 0
         top_left = 0
-        final_image = self.images[0]
+        final_image_1 = self.images[0]
+        
         for n in range(0,len(self.onlyfiles)):
             for i, method_name in enumerate(methods):
-                img_draw = self.images[n].copy()
                 method = eval(method_name)
-                res = cv2.matchTemplate(self.images[n], self.obj, method)
+                res = cv2.matchTemplate(self.images[n], self.obj_1, method)
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
                 if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
@@ -482,26 +506,50 @@ class MyWindow(QWidget):
 
             if final_match_val < match_val:
                 final_match_val = match_val
-                final_image = self.images[n][top_left[1]:top_left[1]+self.obj.shape[0], top_left[0]:top_left[0]+self.obj.shape[1]]
+                final_image_1 = self.images[n][top_left[1]:top_left[1]+self.obj_1.shape[0], top_left[0]:top_left[0]+self.obj_1.shape[1]]
+        
+        filename_2 = "{}.png".format(os.getpid())
+        final_match_val = 0
+        match_val = 0
+        top_left = 0
+        final_image_2 = self.images[0]
 
-        # 이미지 처리 - OCR 하기 좋은 이미지로 변환
-        final_image = cv2.cvtColor(final_image, cv2.COLOR_BGR2GRAY)        
-        #ret, final_image = cv2.threshold(final_image, 127, 255, cv2.THRESH_TOZERO + cv2.THRESH_OTSU)
-        #final_image = cv2.adaptiveThreshold(final_image,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,55,4)
-        #client = vision.ImageAnnotatorClient() - Google Vision
+        for n in range(0,len(self.onlyfiles)):
+            for i, method_name in enumerate(methods):
+                method = eval(method_name)
+                res = cv2.matchTemplate(self.images[n], self.obj_2, method)
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
-        text = pytesseract.image_to_string(final_image, config=custom_config) 
+                if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
+                    top_left = min_loc
+                    match_val = min_val
+                else:
+                    top_left = max_loc
+                    match_val = max_val
+
+            if final_match_val < match_val:
+                final_match_val = match_val
+                final_image_2 = self.images[n][top_left[1]:top_left[1]+self.obj_2.shape[0]+500, top_left[0]:top_left[0]+self.obj_2.shape[1]]
+
+        text = pytesseract.image_to_string(final_image_1, config=custom_config)
+        text += pytesseract.image_to_string(final_image_2, config=custom_config) 
         text = text.replace("\n\n","\n")
         text = text.replace(" \n","")
         self.terminal_browser.append(text)
 
-        cv2.imwrite(filename, final_image)
-        pic = QPixmap(filename)
-        pic.save(f'{find_dir}find_page.png','PNG')
+        cv2.imwrite(filename_1, final_image_1)
+        pic = QPixmap(filename_1)
+        pic.save(f'{find_dir}find_page_1.png','PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_1.setPixmap(pic_display)
-        
-        os.remove(filename)
+        os.remove(filename_1)
+
+        cv2.imwrite(filename_2, final_image_2)
+        pic = QPixmap(filename_2)
+        pic.save(f'{find_dir}find_page_2.png','PNG')
+        pic_display=pic.scaledToWidth(600)
+        self.finding_match_label_2.setPixmap(pic_display)
+        os.remove(filename_2)
 
         # fill line editor
         # 찾아낸 글자를 Line Editor에 적습니다. 현재는 아래 5개만 찾아서 넣습니다. (총 13개 칸...)
