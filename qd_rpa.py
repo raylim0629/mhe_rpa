@@ -653,6 +653,7 @@ class MyWindow(QWidget):
         working_sheet = load_wb[sheet_name]
         file_name = self.info_le[0].text() + '_rev' + self.info_le[2].text() + image_type
         file_path = os.path.join(man_obj_dir,file_name)
+        print(file_path)
         
 
         if os.path.isfile(file_path):
@@ -942,14 +943,48 @@ class MyWindow(QWidget):
         self.email_loc_le[self.idx].setText(self.email_loc_le[self.idx].text())
     
     def login(self):
+        '''
+        driver = webdriver.Chrome(executable_path=r'D:/chrome_driver/chromedriver.exe')
         
+        driver.get(r'https://accounts.google.com/signup')
+
+        p = driver.current_window_handle
+
+        driver.find_element_by_link_text("도움말").click()
+        #prints parent window title
+        print("Parent window title: " + driver.title)
+        #get current window handle
+        #get first child window
+        chwnd = driver.window_handles
+        for w in chwnd:
+        #switch focus to child window
+            print(w)
+            #if(w!=p):
+            #    driver.switch_to.window(w)
+            #break
+            
+        driver.switch_to.window(chwnd[1])
+        time.sleep(5)
+        print("Child window title: " + driver.title)
+
+
+        #driver.find_element_by_link_text("고객센터 관련 의견 보내기").click()
+
+        xxpath1 = "//a[@class='user-feedback-link']"
+        driver.find_element_by_xpath(xxpath1).click()
+
+
+        '''
         driver = webdriver.Chrome("D:/chrome_driver/chromedriver.exe")
 
         url = "http://gw.mandohella.com"
         driver.get(url)
         driver.implicitly_wait(5) #최대 5초 기다림
 
+        
         xpath1 = "//input[@id='lvLogin_LoginID']"  # login - ID
+        driver.find_element_by_xpath(xpath1).send_keys(self.email_loc_le[0].text())
+        
         driver.find_element_by_xpath(xpath1).send_keys(self.email_loc_le[0].text())
 
         xpath2 = "//input[@id='lvLogin_Password']" # login - PW
@@ -997,7 +1032,6 @@ class MyWindow(QWidget):
         #driver.find_element_by_xpath(xpath10).click()
         
         return
-
 
 
 if __name__ == "__main__":
