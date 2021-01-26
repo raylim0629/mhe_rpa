@@ -36,16 +36,10 @@ from pptx.util import Inches
 from openpyxl import load_workbook
 from openpyxl import Workbook
 from PIL import Image 
-#import pywinauto
 from pywinauto.application import Application
-#from pywinauto.keyboard import SendKeys    
 import time
 import win32gui
-#import win32con
-#import win32api
 import win32com
-#import pyglet
-#from pyglet.window import mouse, key
 from pynput import mouse
 import qd_event
 import ctypes
@@ -58,15 +52,13 @@ from selenium import webdriver
 
 ########################################
 
-
-
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요. 
-path = r'./source/'     # 도면이 들어있는 폴더 
-img_dir = r'./result/'  # 도면이 변환된 그림파일이 들어있는 폴더
-obj_dir = r'./object/'  # 찾고자 하는 그림파일이 들어있는 폴더
-find_dir = r'./find/'   # 찾은 그림 파일이 들어있는 폴더
-man_obj_dir = r'./man_object/'  ##@@ 찾고자 하는 '직접 캡쳐한' 그림파일이 들어있는 폴더
+drawing_path = r'D:/qd_rpa/drawing/'                    # 도면이 들어있는 폴더 
+drawing_img_path = r'D:/qd_rpa/drawing_img/'           # 도면이 변환된 그림파일이 들어있는 폴더
+find_obj_path = r'D:/qd_rpa/find_obj/'                  # 찾고자 하는 그림파일이 들어있는 폴더
+find_result_path = r'D:/qd_rpa/find_result/'            # 찾은 그림 파일이 들어있는 폴더
+find_result_man_path = r'D:/qd_rpa/find_result_man/'    ##@@ 찾고자 하는 '직접 캡쳐한' 그림파일이 들어있는 폴더
 
 # OpenCV로 기능에서 이미지 (매칭)검색할 때 찾는 방법을 정의.
 # TM_CCOEFF_NORMED - 정규화된 상관계수 방법 (요것 만 활성화, 딴 건 잘 못찾아서...)
@@ -107,7 +99,7 @@ class MyWindow(QWidget):
         self.drawing_group = QGroupBox('drawing')
         self.drawing_layout = QGridLayout()
         self.drawing_loc_le = QLineEdit()
-        self.drawing_loc_le.setPlaceholderText('./source/')
+        self.drawing_loc_le.setPlaceholderText(drawing_path)
         self.drawing_combo = QComboBox(self)
         self.drawing_combo.addItems(dpi_list)
         self.drawing_combo.setCurrentIndex(1)
@@ -137,11 +129,11 @@ class MyWindow(QWidget):
         self.finding_group = QGroupBox('find & OCR')
         self.finding_layout = QGridLayout()
         self.finding_le_1 = QLineEdit()
-        self.finding_le_1.setPlaceholderText('./object/')
+        self.finding_le_1.setPlaceholderText(find_obj_path)
         self.finding_obj_btn_1 = QPushButton("파일 선택-1")
         self.finding_obj_btn_1.clicked.connect(self.findingButtonClicked_1)
         self.finding_le_2 = QLineEdit()
-        self.finding_le_2.setPlaceholderText('./object/')
+        self.finding_le_2.setPlaceholderText(find_obj_path)
         self.finding_obj_btn_2 = QPushButton("파일 선택-2")
         self.finding_obj_btn_2.clicked.connect(self.findingButtonClicked_2)
         self.finding_anal_btn = QPushButton("찾아내기")
@@ -309,7 +301,7 @@ class MyWindow(QWidget):
         
     # Drawing을 그룹의 Open 버튼을 눌렀을 때 파일을 찾습니다. 
     def selectButtonClicked(self):
-        self.fname = QFileDialog.getOpenFileName(self, 'Open file', './source/')
+        self.fname = QFileDialog.getOpenFileName(self, 'Open file', drawing_path)
         if self.fname:
             self.drawing_loc_le.setText(self.fname[0])
             print(self.fname)
@@ -364,12 +356,12 @@ class MyWindow(QWidget):
         
         for i, page in enumerate(pages):
             filename = os.path.basename(self.fname[0])[:-4]
-            page.save(f'{img_dir+filename}_page{i+1:0>2d}.png','PNG')
+            page.save(f'{drawing_img_path+filename}_page{i+1:0>2d}.png','PNG')
             self.terminal_browser.append(f'{filename}_page{i+1:0>2d}.png saved...')
         self.terminal_browser.append('Done !')
 
-        self.onlyfiles = [ f for f in listdir(img_dir) if isfile(join(img_dir,f)) ]
-        self.images = [cv2.imread(file) for file in glob.glob(img_dir + "/*.png")]
+        self.onlyfiles = [ f for f in listdir(drawing_img_path) if isfile(join(drawing_img_path,f)) ]
+        self.images = [cv2.imread(file) for file in glob.glob(drawing_img_path + "/*.png")]
 
         filename = "{}.png".format(os.getpid())
 
@@ -409,7 +401,7 @@ class MyWindow(QWidget):
         # Collect mouse events until released
         qd_event.mouse_listener()
 
-        mspaint = Application(backend="uia").start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_dir)
+        mspaint = Application(backend="uia").start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_result_path)
         mspaint.connect(path = 'C:\Windows\system32\mspaint.exe')
         mspaint_window_id = win32gui.GetForegroundWindow()
         print(mspaint_window_id)
@@ -449,37 +441,35 @@ class MyWindow(QWidget):
     # 내가 찾고자 하는 그림을 선택하는 버튼...을 눌렀을 때 기능
     def findingButtonClicked_1(self):
         filename = "{}.png".format(os.getpid())
-        self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', './object/')
-        
-        if self.finding_name:
-            self.finding_le_1.setText(self.finding_name[0])
-            self.obj_1 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
-            cv2.imwrite(filename, self.obj_1)
-            pic = QPixmap(filename)
-            pic=pic.scaledToWidth(600)
-            self.finding_obj_label_1.setPixmap(QPixmap(pic))        
-            os.remove(filename)
-        else:
+        try:
+            self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', find_obj_path)
+        except:
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
             return
+
+        self.finding_le_1.setText(self.finding_name[0])
+        self.obj_1 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
+        cv2.imwrite(filename, self.obj_1)
+        pic = QPixmap(filename)
+        pic=pic.scaledToWidth(600)
+        self.finding_obj_label_1.setPixmap(QPixmap(pic))        
+        os.remove(filename)
 
     def findingButtonClicked_2(self):
         filename = "{}.png".format(os.getpid())
-        self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', './object/')
-        
-        if self.finding_name:
-            self.finding_le_2.setText(self.finding_name[0])
-            self.obj_2 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
-            cv2.imwrite(filename, self.obj_2)
-            pic = QPixmap(filename)
-            pic=pic.scaledToWidth(600)
-            self.finding_obj_label_2.setPixmap(QPixmap(pic))        
-            os.remove(filename)
-        else:
+        try:
+            self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', find_obj_path)
+        except:
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
             return
-
-
+       
+        self.finding_le_2.setText(self.finding_name[0])
+        self.obj_2 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
+        cv2.imwrite(filename, self.obj_2)
+        pic = QPixmap(filename)
+        pic=pic.scaledToWidth(600)
+        self.finding_obj_label_2.setPixmap(QPixmap(pic))        
+        os.remove(filename)
 
     # 찾아낸 그림의 문자를 분석합니다...이미지 투 문자 (OCR)
     # 요게 잘 안되요... 업데이트가 필요합니다.
@@ -539,14 +529,14 @@ class MyWindow(QWidget):
 
         cv2.imwrite(filename_1, final_image_1)
         pic = QPixmap(filename_1)
-        pic.save(f'{find_dir}find_page_1.png','PNG')
+        pic.save(f'{find_result_path}find_page_1.png','PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_1.setPixmap(pic_display)
         os.remove(filename_1)
 
         cv2.imwrite(filename_2, final_image_2)
         pic = QPixmap(filename_2)
-        pic.save(f'{find_dir}find_page_2.png','PNG')
+        pic.save(f'{find_result_path}find_page_2.png','PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_2.setPixmap(pic_display)
         os.remove(filename_2)
@@ -700,7 +690,7 @@ class MyWindow(QWidget):
         
         working_sheet = load_wb[sheet_name]
         file_name = self.info_le[0].text() + '_rev' + self.info_le[2].text() + image_type
-        file_path = os.path.join(man_obj_dir,file_name)
+        file_path = os.path.join(find_result_man_path,file_name)
         print(file_path)
         
 
@@ -954,7 +944,10 @@ class MyWindow(QWidget):
         self.mail_dialog = QDialog()
         self.mail_dialog.setWindowTitle('Dialog')
         self.mail_dialog.setWindowModality(Qt.ApplicationModal)
-        self.mail_dialog.resize(600, 800)
+        self.mail_dialog.resize(400, 400)
+
+        self.dialog_layout = QGridLayout()
+        self.email_group = QGroupBox("Login Info")
 
         self.email_layout = QGridLayout()
         self.email_labels = ['ID','password','Receivers','CC','Subject','E-mail Body']
@@ -978,9 +971,10 @@ class MyWindow(QWidget):
         
         self.login_button_select = QPushButton('Log in')
         self.login_button_select.clicked.connect(self.login)
-        
-        self.email_layout.addWidget(self.login_button_select, 7, 0, 1, 2)
-        self.mail_dialog.setLayout(self.email_layout)
+        self.email_layout.addWidget(self.login_button_select, 7, 0, 1, 3)
+        self.email_group.setLayout(self.email_layout)
+        self.dialog_layout.addWidget(self.email_group,0,0,1,1)
+        self.mail_dialog.setLayout(self.dialog_layout)
 
         self.mail_dialog.show()
 
@@ -1033,8 +1027,6 @@ class MyWindow(QWidget):
         xpath1 = "//input[@id='lvLogin_LoginID']"  # login - ID
         driver.find_element_by_xpath(xpath1).send_keys(self.email_loc_le[0].text())
         
-        driver.find_element_by_xpath(xpath1).send_keys(self.email_loc_le[0].text())
-
         xpath2 = "//input[@id='lvLogin_Password']" # login - PW
         driver.find_element_by_xpath(xpath2).send_keys(self.email_loc_le[1].text())
         
