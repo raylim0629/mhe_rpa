@@ -322,9 +322,22 @@ class MyWindow(QWidget):
                 self.adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.dwg_filename[0])
                 self.adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
                 time.sleep(0.1)
-                self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Reader"
+
+                try:
+                    self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Reader"
+                    self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC"
+                except:
+                    pass
+
                 self.adobe_reader_window_id = win32gui.FindWindow(None, self.adobe_reader_window_name)
-                self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
+
+
+                try:
+                    self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
+                    self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
+                except:
+                    pass
+
                 self.terminal_browser.append(os.path.basename("opened with PID: " + str(self.adobe_reader_window_id) + "name" + self.adobe_reader_window_name))
                 self.shell = win32com.client.Dispatch("WScript.Shell")
 
@@ -772,7 +785,7 @@ class MyWindow(QWidget):
             ## cover 시트 부분 ##
             load_cover = load_wb['COVER']
             load_cover['D15'] = load_cover['D18'].value
-            load_cover['D18'] = load_ws['G3'].value + ' (Rev'+load_ws['B8'].value +')'
+            load_cover['D18'] = load_ws['G3'].value + ' (Rev.'+load_ws['B8'].value +')'
 
             ##@@ revision history 시트 부분 ##
             load_history = load_wb['S35_EK(Revision History)']
@@ -986,91 +999,69 @@ class MyWindow(QWidget):
         self.email_loc_le[self.idx].setText(self.email_loc_le[self.idx].text())
     
     def login(self):
-        '''
-        driver = webdriver.Chrome(executable_path=r'D:/chrome_driver/chromedriver.exe')
         
-        driver.get(r'https://accounts.google.com/signup')
+        try:
+            #driver = webdriver.Chrome(ChromeDriverManager().install())      #If suffer 'selenium.common.exceptions.WebDriverException: Message: chrome not reachable' error message, unannotate this line
+            driver = webdriver.Chrome(r'D:/chrome_driver/chromedriver.exe')
 
-        p = driver.current_window_handle
-
-        driver.find_element_by_link_text("도움말").click()
-        #prints parent window title
-        print("Parent window title: " + driver.title)
-        #get current window handle
-        #get first child window
-        chwnd = driver.window_handles
-        for w in chwnd:
-        #switch focus to child window
-            print(w)
-            #if(w!=p):
-            #    driver.switch_to.window(w)
-            #break
+            url = r'http://gw.mandohella.com'
             
-        driver.switch_to.window(chwnd[1])
-        time.sleep(5)
-        print("Child window title: " + driver.title)
+            driver.get(url)
+            driver.implicitly_wait(5) #최대 5초 기다림
 
+            
+            xpath1 = r"//input[@id='lvLogin_LoginID']"  # login - ID
+            driver.find_element_by_xpath(xpath1).send_keys(self.email_loc_le[0].text())
+            
+            xpath2 = r"//input[@id='lvLogin_Password']" # login - PW
+            driver.find_element_by_xpath(xpath2).send_keys(self.email_loc_le[1].text())
 
-        #driver.find_element_by_link_text("고객센터 관련 의견 보내기").click()
+            
+            xpath3 = r"//a[@class='btn btn-info']"      # login - btn click
+            driver.find_element_by_xpath(xpath3).click()
+        
+            xpath4 = r"//li[@class='gnb-menu  dropdown ']" # email - menu click
+            driver.find_element_by_xpath(xpath4).click()
+            
+            #p = driver.window_handles
+            
+            xpath5 = r"//a[@class='btn btn-primary btn-round btn-width right-5']" # email - tab에서 "메일쓰기" - btn click
+            driver.find_element_by_xpath(xpath5).click()
 
-        xxpath1 = "//a[@class='user-feedback-link']"
-        driver.find_element_by_xpath(xxpath1).click()
+            driver.implicitly_wait(5)
+            
+            ## window switch ##
+            
+            chwnd = driver.window_handles     # 전체 창에 대한 요소를 배열로 저장
+            driver.switch_to.window(chwnd[-1]) # 최종 창 선택
+            time.sleep(5)
+            
+            
+            ## 메일 수신인 ##
+            xpath6 = r"//input[@id='toInput']"
+            driver.find_element_by_xpath(xpath6).send_keys(self.email_loc_le[2].text())
+            
+            ## 메일 수신인:참조 ##
+            xpath7 = r"//input[@id='ccInput']"
+            driver.find_element_by_xpath(xpath7).send_keys(self.email_loc_le[3].text())
+            
+            ## 메일 제목 ##
+            xpath8 = r"//input[@id='tbSubject']"
+            driver.find_element_by_xpath(xpath8).send_keys(self.email_loc_le[4].text())
+            
+            ##@@ 메일 내용 작성에 대한 html 변환 code 추가 필요
+            ## 메일 내용 ##
+            
+            #xpath9 = r"//body[@id='dext_body']/p"
+            xpath9 = r'/html/body/p/br'
+            driver.find_element_by_xpath(xpath9).send_keys(self.email_loc_le[5].text())
+            
+            ## 메일 보내기 ##
+            #xpath10 = "//a[@id='btSendMail']
+            #driver.find_element_by_xpath(xpath10).click()
 
-
-        '''
-        driver = webdriver.Chrome("D:/chrome_driver/chromedriver.exe")
-
-        url = "http://gw.mandohella.com"
-        driver.get(url)
-        driver.implicitly_wait(5) #최대 5초 기다림
-
-        
-        xpath1 = "//input[@id='lvLogin_LoginID']"  # login - ID
-        driver.find_element_by_xpath(xpath1).send_keys(self.email_loc_le[0].text())
-        
-        xpath2 = "//input[@id='lvLogin_Password']" # login - PW
-        driver.find_element_by_xpath(xpath2).send_keys(self.email_loc_le[1].text())
-        
-        xpath3 = "//a[@class='btn btn-info']"      # login - btn click
-        driver.find_element_by_xpath(xpath3).click()
-    
-        xpath4 = "//li[@class='gnb-menu  dropdown ']" # email - menu click
-        driver.find_element_by_xpath(xpath4).click()
-        
-        #p = driver.window_handles
-        
-        xpath5 = "//a[@class='btn btn-primary btn-round btn-width right-5']" # email - tab에서 "메일쓰기" - btn click
-        driver.find_element_by_xpath(xpath5).click()
-
-        driver.implicitly_wait(5)
-        
-        ## window switch ##
-        
-        chwnd = driver.window_handles     # 전체 창에 대한 요소를 배열로 저장
-        driver.switch_to.window(chwnd[-1]) # 최종 창 선택
-        time.sleep(5)
-        
-        
-        ## 메일 수신인 ##
-        xpath6 = "//input[@id='toInput']"
-        driver.find_element_by_xpath(xpath6).send_keys(self.email_loc_le[2].text())
-        
-        ## 메일 수신인:참조 ##
-        xpath7 = "//input[@id='ccInput']"
-        driver.find_element_by_xpath(xpath7).send_keys(self.email_loc_le[3].text())
-        
-        ## 메일 제목 ##
-        xpath8 = "//input[@id='tbSubject']"
-        driver.find_element_by_xpath(xpath8).send_keys(self.email_loc_le[4].text())
-        
-        ##@@ 메일 내용 작성에 대한 html 변환 code 추가 필요
-        ## 메일 내용 ##
-        xpath9 = "//body[@id='dext_body']"
-        driver.find_element_by_xpath(xpath9).send_keys(self.email_loc_le[5].text())
-        
-        ## 메일 보내기 ##
-        #xpath10 = "//a[@id='btSendMail']
-        #driver.find_element_by_xpath(xpath10).click()
+        except Exception as e:
+            print(e)
         
         return
 
