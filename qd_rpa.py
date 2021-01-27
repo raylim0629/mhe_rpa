@@ -26,6 +26,7 @@ import openpyxl
 from datetime import datetime ##@@ datetime.datetime (import) to attach date on filename
 from pdf2image import convert_from_path
 from os.path import isfile, join
+from os.path import *
 from os import listdir
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QCoreApplication, QLine, Qt
@@ -35,16 +36,10 @@ from pptx.util import Inches
 from openpyxl import load_workbook
 from openpyxl import Workbook
 from PIL import Image 
-#import pywinauto
 from pywinauto.application import Application
-#from pywinauto.keyboard import SendKeys    
 import time
 import win32gui
-#import win32con
-#import win32api
 import win32com
-#import pyglet
-#from pyglet.window import mouse, key
 from pynput import mouse
 import qd_event
 import ctypes
@@ -58,15 +53,13 @@ from webdriver_manager.chrome import ChromeDriverManager   ## to match correct d
 
 ########################################
 
-
-
 # 입/출력 문서 관리 폴더를 정의합니다.
 # 계속 바꾸다 보니 뭐가 이름일아 잘 안 맞아요. 
-path = r'./source/'     # 도면이 들어있는 폴더 
-img_dir = r'./result/'  # 도면이 변환된 그림파일이 들어있는 폴더
-obj_dir = r'./object/'  # 찾고자 하는 그림파일이 들어있는 폴더
-find_dir = r'./find/'   # 찾은 그림 파일이 들어있는 폴더
-man_obj_dir = r'./man_object/'  ##@@ 찾고자 하는 '직접 캡쳐한' 그림파일이 들어있는 폴더
+drawing_path = r'D:/qd_rpa/drawing/'                    # 도면이 들어있는 폴더 
+drawing_img_path = r'D:/qd_rpa/drawing_img/'           # 도면이 변환된 그림파일이 들어있는 폴더
+find_obj_path = r'D:/qd_rpa/find_obj/'                  # 찾고자 하는 그림파일이 들어있는 폴더
+find_result_path = r'D:/qd_rpa/find_result/'            # 찾은 그림 파일이 들어있는 폴더
+find_result_man_path = r'C:/test/'    ##@@ 찾고자 하는 '직접 캡쳐한' 그림파일이 들어있는 폴더
 
 # OpenCV로 기능에서 이미지 (매칭)검색할 때 찾는 방법을 정의.
 # TM_CCOEFF_NORMED - 정규화된 상관계수 방법 (요것 만 활성화, 딴 건 잘 못찾아서...)
@@ -107,14 +100,12 @@ class MyWindow(QWidget):
         self.drawing_group = QGroupBox('drawing')
         self.drawing_layout = QGridLayout()
         self.drawing_loc_le = QLineEdit()
-        self.drawing_loc_le.setPlaceholderText('./source/')
+        self.drawing_loc_le.setPlaceholderText(drawing_path)
         self.drawing_combo = QComboBox(self)
         self.drawing_combo.addItems(dpi_list)
         self.drawing_combo.setCurrentIndex(1)
-        self.drawing_button_select = QPushButton("파일 선택")
+        self.drawing_button_select = QPushButton("도면선택 and 이미지변환")
         self.drawing_button_select.clicked.connect(self.selectButtonClicked)
-        self.drawing_button_change_image = QPushButton("이미지 변환")
-        self.drawing_button_change_image.clicked.connect(self.changeToImageButtonClicked)
         self.drawing_tabs = QTabWidget()
         self.drawing_label = [QLabel('PDF-image',self) for i in range(10)]
         for idx, label in enumerate(self.drawing_label):
@@ -126,8 +117,7 @@ class MyWindow(QWidget):
             self.drawing_tabs.addTab(label, str(idx+1) + ' ')
         self.drawing_layout.addWidget(self.drawing_loc_le,0,0,1,4)
         self.drawing_layout.addWidget(self.drawing_combo,0,4,1,1)
-        self.drawing_layout.addWidget(self.drawing_button_select,0,5,1,1)
-        self.drawing_layout.addWidget(self.drawing_button_change_image,0,6,1,1)
+        self.drawing_layout.addWidget(self.drawing_button_select,0,5,1,2)
         self.drawing_layout.addWidget(self.drawing_tabs,1,0,7,7)
         self.drawing_group.setLayout(self.drawing_layout)
         layout.addWidget(self.drawing_group,1,0,5,1)
@@ -137,15 +127,15 @@ class MyWindow(QWidget):
         self.finding_group = QGroupBox('find & OCR')
         self.finding_layout = QGridLayout()
         self.finding_le_1 = QLineEdit()
-        self.finding_le_1.setPlaceholderText('./object/')
+        self.finding_le_1.setPlaceholderText(find_obj_path)
         self.finding_obj_btn_1 = QPushButton("파일 선택-1")
-        self.finding_obj_btn_1.clicked.connect(self.findingButtonClicked_1)
+        self.finding_obj_btn_1.clicked.connect(self.selectFindObjButtonClicked_1)
         self.finding_le_2 = QLineEdit()
-        self.finding_le_2.setPlaceholderText('./object/')
+        self.finding_le_2.setPlaceholderText(find_obj_path)
         self.finding_obj_btn_2 = QPushButton("파일 선택-2")
-        self.finding_obj_btn_2.clicked.connect(self.findingButtonClicked_2)
+        self.finding_obj_btn_2.clicked.connect(self.selectFindObjButtonClicked_2)
         self.finding_anal_btn = QPushButton("찾아내기")
-        self.finding_anal_btn.clicked.connect(self.analyzeButtonClicked)
+        self.finding_anal_btn.clicked.connect(self.findAnalyzeButtonClicked)
         self.finding_ocr_btn = QPushButton("OCR")
         self.finding_ocr_btn.clicked.connect(self.OcrButtonClicked)
         self.finding_obj_label_1 = QLabel('object-image',self)
@@ -259,11 +249,11 @@ class MyWindow(QWidget):
         self.doc_button_group.setLayout(self.doc_button_layout)
         layout.addWidget(self.doc_button_group,5,3,7,1)
 
-        # 문서를 출력하기 위한 버튼 모음 입니다.
+        # selenium용 (mail, web-access) 버튼 모음 입니다.
         self.selenium_button_group = QGroupBox('Selenium Buttons')
-        #self.selenium_button_group.setFixedWidth(500)
         self.selenium_button_layout = QGridLayout()
         self.selenium_button_mail = QPushButton("Mail")
+        self.selenium_button_mail.setFixedWidth(150)
         self.selenium_button_mail.clicked.connect(self.mail_document)
         self.selenium_button_layout.addWidget(self.selenium_button_mail,0,0,1,1)
         self.selenium_button_group.setLayout(self.selenium_button_layout)
@@ -306,26 +296,19 @@ class MyWindow(QWidget):
         self.setWindowTitle("Drawing Analyzer")
         self.setLayout(layout)
         self.show() 
-        
-    # Drawing을 그룹의 Open 버튼을 눌렀을 때 파일을 찾습니다. 
+
+    # 도면(pdf) 파일을 찾아서 이미지(png) 파일로 변경합니다. 
     def selectButtonClicked(self):
-        self.fname = QFileDialog.getOpenFileName(self, 'Open file', './source/')
-        if self.fname:
-            self.drawing_loc_le.setText(self.fname[0])
-            print(self.fname)
-
-        else:
-            QMessageBox.about(self, "Warning", "파일을 선택되지 않았습니다.")
+        self.dwg_filename = QFileDialog.getOpenFileName(self, 'Open file', drawing_path)
+        if not self.dwg_filename[0]:
+            QMessageBox.about(self, "Warning", "Drawing 파일을 선택되지 않았습니다.")
             return
-
-    # Drawing (PDF)를 이미지 (PNG)로 변경하는 버튼 기능 입니다.
-    def changeToImageButtonClicked(self):
+        
+        self.drawing_loc_le.setText(self.dwg_filename[0])
+        self.terminal_browser.append(self.dwg_filename[0])
+    
         try:
-            pages = convert_from_path(self.fname[0], dpi=int(self.drawing_combo.currentText()))
-        except AttributeError:
-            QMessageBox.about(self, "Warning", "파일을 선택되지 않았습니다.")
-            return
-            
+            pages = convert_from_path(self.dwg_filename[0], dpi=int(self.drawing_combo.currentText()))    
         except:
             print("Unexpected error:", sys.exc_info()[0])
             reply = QMessageBox.question(self, "Warning", "PDF 파일이 DRM에 걸려 있습니다. 직접 선택 영역을 직접 선택하시겠습니까?",
@@ -336,13 +319,13 @@ class MyWindow(QWidget):
             self.finding_obj_label_2.setText('DRM')
 
             if reply == QMessageBox.Yes:
-                self.adobe_reader = Application(backend="uia").start(cmd_line = 'AcroRd32.exe'+ ' ' + self.fname[0])
-                self.adobe_reader.connect(path='AcroRd32.exe')
+                self.adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.dwg_filename[0])
+                self.adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
                 time.sleep(0.1)
 
                 try:
-                    self.adobe_reader_window_name = os.path.basename(self.fname[0]) + " - Adobe Reader"
-                    self.adobe_reader_window_name = os.path.basename(self.fname[0]) + " - Adobe Acrobat Reader DC"
+                    self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Reader"
+                    self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC"
                 except:
                     pass
 
@@ -350,8 +333,8 @@ class MyWindow(QWidget):
 
 
                 try:
-                    self.terminal_browser.append(os.path.basename(self.fname[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
-                    self.terminal_browser.append(os.path.basename(self.fname[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
+                    self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
+                    self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
                 except:
                     pass
 
@@ -376,33 +359,29 @@ class MyWindow(QWidget):
                 print(f"Error:{e.strerror}")
         
         for i, page in enumerate(pages):
-            filename = os.path.basename(self.fname[0])[:-4]
-            page.save(f'{img_dir+filename}_page{i+1:0>2d}.png','PNG')
-            self.terminal_browser.append(f'{filename}_page{i+1:0>2d}.png saved...')
+            dwg_img_filename = drawing_img_path+os.path.basename(self.dwg_filename[0])[:-4]
+            page.save(f'{dwg_img_filename}_page{i+1:0>2d}.png','PNG')
+            self.terminal_browser.append(f'{dwg_img_filename}_page{i+1:0>2d}.png saved...')
         self.terminal_browser.append('Done !')
 
-        self.onlyfiles = [ f for f in listdir(img_dir) if isfile(join(img_dir,f)) ]
-        self.images = [cv2.imread(file) for file in glob.glob(img_dir + "/*.png")]
+        self.dwg_img_files = [ f for f in listdir(drawing_img_path) if isfile(join(drawing_img_path,f)) ]
+        self.images = [cv2.imread(file) for file in glob.glob(drawing_img_path + "/*.png")]
 
-        filename = "{}.png".format(os.getpid())
+        temp_filename = "{}.png".format(os.getpid())
 
-        for i in range(0,len(self.onlyfiles)):
-            cv2.imwrite(filename, self.images[i])
-            pic = QPixmap(filename)
+        for i in range(0,len(self.dwg_img_files)):
+            cv2.imwrite(temp_filename, self.images[i])
+            pic = QPixmap(temp_filename)
             pic = pic.scaledToWidth(600)
             self.drawing_label[i].setPixmap(QPixmap(pic))
-            os.remove(filename)
+            os.remove(temp_filename)
 
     # 도면에 DRM이 걸려 있을 경우...
     def findAndCaptureDrmDrawing(self,page_no = 1): 
-
         win32gui.SetForegroundWindow(self.adobe_reader_window_id)
         time.sleep(0.1)
-
         self.shell.SendKeys('^0',0)
-
         msg = ctypes.windll.user32.MessageBoxW(None, "도면에서 확대하고자하는 영역을 선택하세요.", "확대", 0x00040000)
-
         self.shell.SendKeys('{F10}')
         self.shell.SendKeys('V')
         self.shell.SendKeys('Z')
@@ -410,104 +389,109 @@ class MyWindow(QWidget):
 
         # Collect mouse events until released
         qd_event.mouse_listener()
-
         msg = ctypes.windll.user32.MessageBoxW(None, "도면에서 캡쳐하고자하는 영역을 선택하세요.", "캡쳐", 0x00040000)
-
         win32gui.SetForegroundWindow(self.adobe_reader_window_id)
-
         self.shell.SendKeys('{F10}')
         self.shell.SendKeys('E')
         self.shell.SendKeys('A')
 
         # Collect mouse events until released
         qd_event.mouse_listener()
-
-        mspaint = Application(backend="uia").start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_dir)
+        mspaint = Application(backend="uia").start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_result_path)
         mspaint.connect(path = 'C:\Windows\system32\mspaint.exe')
         mspaint_window_id = win32gui.GetForegroundWindow()
         print(mspaint_window_id)
-        time.sleep(0.1)
         win32gui.SetForegroundWindow(mspaint_window_id)
         time.sleep(0.1)
         self.shell.SendKeys("^v",0)
         time.sleep(0.1)
-        self.shell.SendKeys("^s",0)
+        #self.shell.SendKeys("^s",0)
+        self.shell.SendKeys("{F12}",0)
         time.sleep(0.1)
         if page_no == 1: 
-            self.pic_name_find1 = os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
+            self.pic_name_find1 = os.path.abspath(find_result_man_path) + '\\'
+            self.pic_name_find1 += os.path.splitext(os.path.basename(self.dwg_filename[0]))[0]
+            self.pic_name_find1 += datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
+            
             self.shell.SendKeys(self.pic_name_find1)
 
         elif page_no == 2: 
-            self.pic_name_find2 = os.getcwd() + '\\find\\' + os.path.splitext(os.path.basename(self.fname[0]))[0]+ datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
+            self.pic_name_find2 = os.path.abspath(find_result_man_path) + '\\'
+            self.pic_name_find2 += os.path.splitext(os.path.basename(self.dwg_filename[0]))[0]
+            self.pic_name_find2 += datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
             self.shell.SendKeys(self.pic_name_find2)
 
         time.sleep(3)
         self.shell.SendKeys("{ENTER}")
-        time.sleep(3)
+        time.sleep(5)
         mspaint.kill()
-        
+        print(self.pic_name_find1)
         if page_no == 1: 
             pic = QPixmap(self.pic_name_find1)
-            #pic = pic.load(self.pic_name_find1)
             pic = pic.scaledToWidth(600)
             self.finding_match_label_1.setPixmap(QPixmap(pic))
         elif page_no == 2:
             pic = QPixmap(self.pic_name_find2)
-            #pic = pic.load(self.pic_name_find2)
             pic = pic.scaledToWidth(600)
             self.finding_match_label_2.setPixmap(QPixmap(pic))
         
         return
 
     # 내가 찾고자 하는 그림을 선택하는 버튼...을 눌렀을 때 기능
-    def findingButtonClicked_1(self):
+    def selectFindObjButtonClicked_1(self):
         filename = "{}.png".format(os.getpid())
-        self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', './object/')
-        
-        if self.finding_name:
-            self.finding_le_1.setText(self.finding_name[0])
-            self.obj_1 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
-            cv2.imwrite(filename, self.obj_1)
-            pic = QPixmap(filename)
-            pic=pic.scaledToWidth(600)
-            self.finding_obj_label_1.setPixmap(QPixmap(pic))        
-            os.remove(filename)
-        else:
+        self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', find_obj_path, "Images (*.png *.jpg)")
+        if not self.finding_name[0]:
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
             return
 
-    def findingButtonClicked_2(self):
+        self.finding_le_1.setText(self.finding_name[0])
+        self.obj_1 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
+        cv2.imwrite(filename, self.obj_1)
+        pic = QPixmap(filename)
+        pic=pic.scaledToWidth(600)
+        self.finding_obj_label_1.setPixmap(QPixmap(pic))        
+        os.remove(filename)
+
+    def selectFindObjButtonClicked_2(self):
         filename = "{}.png".format(os.getpid())
-        self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', './object/')
-        
-        if self.finding_name:
-            self.finding_le_2.setText(self.finding_name[0])
-            self.obj_2 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
-            cv2.imwrite(filename, self.obj_2)
-            pic = QPixmap(filename)
-            pic=pic.scaledToWidth(600)
-            self.finding_obj_label_2.setPixmap(QPixmap(pic))        
-            os.remove(filename)
-        else:
+        self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', find_obj_path, "Images (*.png *.jpg)")
+        if not self.finding_name[0]:
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
             return
 
-
+        self.finding_le_2.setText(self.finding_name[0])
+        self.obj_2 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
+        cv2.imwrite(filename, self.obj_2)
+        pic = QPixmap(filename)
+        pic=pic.scaledToWidth(600)
+        self.finding_obj_label_2.setPixmap(QPixmap(pic))        
+        os.remove(filename)
 
     # 찾아낸 그림의 문자를 분석합니다...이미지 투 문자 (OCR)
     # 요게 잘 안되요... 업데이트가 필요합니다.
-    def analyzeButtonClicked(self):
+    def findAnalyzeButtonClicked(self):
         #이미지 매칭 검색
         filename_1 = "{}.png".format(os.getpid())
-        final_match_val = 0
+        final_match_val_1 = 0
         match_val = 0
         top_left = 0
-        final_image_1 = self.images[0]
+        try:
+            final_image_1 = self.images[0]
+        except:
+            QMessageBox.about(self, "Warning", "도면을 선택되지 않았습니다.")
+            return
         
-        for n in range(0,len(self.onlyfiles)):
+        
+        for n in range(0,len(self.dwg_img_files)):
             for i, method_name in enumerate(methods):
                 method = eval(method_name)
-                res = cv2.matchTemplate(self.images[n], self.obj_1, method)
+                try:
+                    res = cv2.matchTemplate(self.images[n], self.obj_1, method)
+                except:
+                    QMessageBox.about(self, "Warning", "찾고자하는 파일1을 선택하지 않았습니다.")
+                    return
+
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
                 if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
@@ -517,20 +501,28 @@ class MyWindow(QWidget):
                     top_left = max_loc
                     match_val = max_val
 
-            if final_match_val < match_val:
-                final_match_val = match_val
+            if final_match_val_1 < match_val:
+                final_match_val_1 = match_val
                 final_image_1 = self.images[n][top_left[1]:top_left[1]+self.obj_1.shape[0], top_left[0]:top_left[0]+self.obj_1.shape[1]]
         
         filename_2 = "{}.png".format(os.getpid())
-        final_match_val = 0
+        final_match_val_2 = 0
         match_val = 0
         top_left = 0
-        final_image_2 = self.images[0]
+        try:
+            final_image_2 = self.images[0]
+        except:
+            QMessageBox.about(self, "Warning", "도면을 선택되지 않았습니다.")
+            return
 
-        for n in range(0,len(self.onlyfiles)):
+        for n in range(0,len(self.dwg_img_files)):
             for i, method_name in enumerate(methods):
                 method = eval(method_name)
-                res = cv2.matchTemplate(self.images[n], self.obj_2, method)
+                try:
+                    res = cv2.matchTemplate(self.images[n], self.obj_2, method)
+                except:
+                    QMessageBox.about(self, "Warning", "찾고자하는 파일1을 선택하지 않았습니다.")
+                    return
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
                 if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
@@ -540,8 +532,8 @@ class MyWindow(QWidget):
                     top_left = max_loc
                     match_val = max_val
 
-            if final_match_val < match_val:
-                final_match_val = match_val
+            if final_match_val_2 < match_val:
+                final_match_val_2 = match_val
                 final_image_2 = self.images[n][top_left[1]:top_left[1]+self.obj_2.shape[0]+500, top_left[0]:top_left[0]+self.obj_2.shape[1]]
 
         text = pytesseract.image_to_string(final_image_1, config=custom_config)
@@ -552,14 +544,14 @@ class MyWindow(QWidget):
 
         cv2.imwrite(filename_1, final_image_1)
         pic = QPixmap(filename_1)
-        pic.save(f'{find_dir}find_page_1.png','PNG')
+        pic.save(f'{find_result_path}find_page_1.png','PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_1.setPixmap(pic_display)
         os.remove(filename_1)
 
         cv2.imwrite(filename_2, final_image_2)
         pic = QPixmap(filename_2)
-        pic.save(f'{find_dir}find_page_2.png','PNG')
+        pic.save(f'{find_result_path}find_page_2.png','PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_2.setPixmap(pic_display)
         os.remove(filename_2)
@@ -577,9 +569,8 @@ class MyWindow(QWidget):
         file.close()
 
         # 찾아낸 그림의 매치율 과 위치를 뿌려줍니다.
-        print(top_left, final_match_val)
-        self.terminal_browser.append(f'top:' + str(top_left[0]) + f'   left:' + str (top_left[1]))     
-        self.terminal_browser.append(f'match late:' + str(round(final_match_val*100,4)) + "%")     
+        self.terminal_browser.append(f'1st image match late:' + str(round(final_match_val_1*100,4)) + "%")     
+        self.terminal_browser.append(f'2nd image match late:' + str(round(final_match_val_1*100,4)) + "%")     
 
     def OcrButtonClicked(self):
         text = pytesseract.image_to_string(Image.open(self.pic_name_find1)) 
@@ -713,7 +704,7 @@ class MyWindow(QWidget):
         
         working_sheet = load_wb[sheet_name]
         file_name = self.info_le[0].text() + '_rev' + self.info_le[2].text() + image_type
-        file_path = os.path.join(man_obj_dir,file_name)
+        file_path = os.path.join(find_result_man_path,file_name)
         print(file_path)
         
 
@@ -967,7 +958,10 @@ class MyWindow(QWidget):
         self.mail_dialog = QDialog()
         self.mail_dialog.setWindowTitle('Dialog')
         self.mail_dialog.setWindowModality(Qt.ApplicationModal)
-        self.mail_dialog.resize(600, 800)
+        self.mail_dialog.resize(400, 400)
+
+        self.dialog_layout = QGridLayout()
+        self.email_group = QGroupBox("Login Info")
 
         self.email_layout = QGridLayout()
         self.email_labels = ['ID','password','Receivers','CC','Subject','E-mail Body']
@@ -991,9 +985,10 @@ class MyWindow(QWidget):
         
         self.login_button_select = QPushButton('Log in')
         self.login_button_select.clicked.connect(self.login)
-        
-        self.email_layout.addWidget(self.login_button_select, 7, 0, 1, 2)
-        self.mail_dialog.setLayout(self.email_layout)
+        self.email_layout.addWidget(self.login_button_select, 7, 0, 1, 3)
+        self.email_group.setLayout(self.email_layout)
+        self.dialog_layout.addWidget(self.email_group,0,0,1,1)
+        self.mail_dialog.setLayout(self.dialog_layout)
 
         self.mail_dialog.show()
 
