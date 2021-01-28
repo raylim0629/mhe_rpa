@@ -59,7 +59,7 @@ drawing_path = r'D:/qd_rpa/drawing/'                    # 도면이 들어있는
 drawing_img_path = r'D:/qd_rpa/drawing_img/'           # 도면이 변환된 그림파일이 들어있는 폴더
 find_obj_path = r'D:/qd_rpa/find_obj/'                  # 찾고자 하는 그림파일이 들어있는 폴더
 find_result_path = r'D:/qd_rpa/find_result/'            # 찾은 그림 파일이 들어있는 폴더
-find_result_man_path = r'C:/test/'    ##@@ 찾고자 하는 '직접 캡쳐한' 그림파일이 들어있는 폴더
+find_result_man_path = r'D:/qd_rpa/find_result_man/'    ##@@ 찾고자 하는 '직접 캡쳐한' 그림파일이 들어있는 폴더
 
 # OpenCV로 기능에서 이미지 (매칭)검색할 때 찾는 방법을 정의.
 # TM_CCOEFF_NORMED - 정규화된 상관계수 방법 (요것 만 활성화, 딴 건 잘 못찾아서...)
@@ -74,6 +74,10 @@ dpi_list = ['100','200','300','400','800','1600']
 custom_config = r'-l eng+kor'
 
 class MyWindow(QWidget):  
+
+    pic_name_find1 = "{}.png".format(os.getpid())
+    pic_name_find2 = "{}.png".format(os.getpid())
+
     def __init__(self):
         super().__init__()
         self.setupUI()
@@ -184,7 +188,7 @@ class MyWindow(QWidget):
         self.terminal_group.setLayout(self.terminal_layout)
         layout.addWidget(self.terminal_group, 5,1,7,1)
 
-        # function button
+        # function buttons
         # 각종 기능 버튼이 있는 그룹입니다. (Clear/Quit/Add row/Delete Row/Update Row 등등...)
         # 또 뭔가 기능을 넣을 때는 해당 그룹을 손되시면 됩니다. 크기도 좀 키워야 하는데...
         self.func_button_group = QGroupBox('function button')
@@ -201,11 +205,14 @@ class MyWindow(QWidget):
         self.func_button_delete_row.clicked.connect(self.delete_row)
         self.func_button_update_row = QPushButton("update row")
         self.func_button_update_row.clicked.connect(self.update_row)
+        self.func_button_update_image = QPushButton("update image name")
+        self.func_button_update_image.clicked.connect(self.updateImageName)
         self.func_button_layout.addWidget(self.func_button_clear,0,0,1,1)
         self.func_button_layout.addWidget(self.func_button_ppt,0,1,1,1)
         self.func_button_layout.addWidget(self.func_button_add_row,0,2,1,1)
         self.func_button_layout.addWidget(self.func_button_delete_row,0,3,1,1)
         self.func_button_layout.addWidget(self.func_button_update_row,1,0,1,1)
+        self.func_button_layout.addWidget(self.func_button_update_image,1,1,1,1)
         self.func_button_layout.addWidget(self.func_button_quit,1,3,1,1)
         self.func_button_group.setLayout(self.func_button_layout)
         layout.addWidget(self.func_button_group,12,1,1,1)
@@ -309,7 +316,7 @@ class MyWindow(QWidget):
     
         try:
             pages = convert_from_path(self.dwg_filename[0], dpi=int(self.drawing_combo.currentText()))    
-        except:
+        except:         # DRM에 걸려 있는경우 직접 PDF파일을 캡쳐해서 저장함
             print("Unexpected error:", sys.exc_info()[0])
             reply = QMessageBox.question(self, "Warning", "PDF 파일이 DRM에 걸려 있습니다. 직접 선택 영역을 직접 선택하시겠습니까?",
                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -319,12 +326,12 @@ class MyWindow(QWidget):
             self.finding_obj_label_2.setText('DRM')
 
             if reply == QMessageBox.Yes:
-                self.adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe'+ ' ' + self.dwg_filename[0])
-                self.adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe')
+                self.adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe'+ ' ' + self.dwg_filename[0])
+                self.adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe')
                 time.sleep(0.1)
 
                 try:
-                    self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Reader"
+                    #self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Reader"
                     self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC"
                 except:
                     pass
@@ -334,7 +341,7 @@ class MyWindow(QWidget):
 
                 try:
                     self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
-                    self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
+                    #self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
                 except:
                     pass
 
@@ -349,9 +356,8 @@ class MyWindow(QWidget):
                 return
             else:
                 return
-
-        png_files = glob.glob('result/*.png')
-
+        png_files = glob.glob(os.path.abspath(drawing_img_path + r'\*.png'))
+        print(png_files)
         for png_file in png_files:
             try:
                 os.remove(png_file)
@@ -409,21 +415,30 @@ class MyWindow(QWidget):
         self.shell.SendKeys("{F12}",0)
         time.sleep(0.1)
         if page_no == 1: 
-            self.pic_name_find1 = os.path.abspath(find_result_man_path) + '\\'
-            self.pic_name_find1 += os.path.splitext(os.path.basename(self.dwg_filename[0]))[0]
-            self.pic_name_find1 += datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
+            try:
+                os.remove(os.path.abspath(find_result_man_path) + '\\find_1.png')
+            except OSError as e:
+                print(f"Error:{e.strerror}")
             
+            self.pic_name_find1 = os.path.abspath(find_result_man_path) + '\\find_1.png'
+            #self.pic_name_find1 += os.path.splitext(os.path.basename(self.dwg_filename[0]))[0]
+            #self.pic_name_find1 += datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
             self.shell.SendKeys(self.pic_name_find1)
 
         elif page_no == 2: 
-            self.pic_name_find2 = os.path.abspath(find_result_man_path) + '\\'
-            self.pic_name_find2 += os.path.splitext(os.path.basename(self.dwg_filename[0]))[0]
-            self.pic_name_find2 += datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
+            try:
+                os.remove(os.path.abspath(find_result_man_path) + '\\find_2.png')
+            except OSError as e:
+                print(f"Error:{e.strerror}")
+            self.pic_name_find2 = os.path.abspath(find_result_man_path) + '\\find_2.png'
+            #self.pic_name_find2 += os.path.splitext(os.path.basename(self.dwg_filename[0]))[0]
+            #self.pic_name_find2 += datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
             self.shell.SendKeys(self.pic_name_find2)
 
         time.sleep(3)
-        self.shell.SendKeys("{ENTER}")
-        time.sleep(5)
+        #self.shell.SendKeys("{ENTER}")
+        self.shell.SendKeys("%s",0)
+        time.sleep(3)
         mspaint.kill()
         print(self.pic_name_find1)
         if page_no == 1: 
@@ -544,14 +559,16 @@ class MyWindow(QWidget):
 
         cv2.imwrite(filename_1, final_image_1)
         pic = QPixmap(filename_1)
-        pic.save(f'{find_result_path}find_page_1.png','PNG')
+        self.pic_name_find1 = f'{find_result_path}find_1.png'
+        pic.save(self.pic_name_find1,'PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_1.setPixmap(pic_display)
         os.remove(filename_1)
 
         cv2.imwrite(filename_2, final_image_2)
         pic = QPixmap(filename_2)
-        pic.save(f'{find_result_path}find_page_2.png','PNG')
+        self.pic_name_find2 = f'{find_result_path}find_2.png'
+        pic.save(self.pic_name_find2,'PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_2.setPixmap(pic_display)
         os.remove(filename_2)
@@ -672,6 +689,39 @@ class MyWindow(QWidget):
             le.clear()
 
         print(self.df)
+
+    def updateImageName(self):
+        if not self.info_le[0].text():
+            print("project info. is empty")
+            QMessageBox.about(self, "Warning", '주의사항: 프로젝트 이름란이 비어 있습니다.')
+            return
+        elif not self.info_le[1].text():
+            print("project info. is empty")
+            QMessageBox.about(self, "Warning", '주의사항: 프로젝트 단계란이 비어 있습니다.')
+            return
+        elif not self.info_le[2].text():    
+            print("project info. is empty")
+            QMessageBox.about(self, "Warning", '주의사항: revision란이 비어 있습니다.')
+            return
+
+        try:
+            dest_1 = os.path.dirname(self.pic_name_find1)+'\\'+self.info_le[0].text()+'_'+self.info_le[1].text()+'_'+self.info_le[2].text()+"_A.png"
+            os.rename(self.pic_name_find1, dest_1)
+            print(f"sorce: {self.pic_name_find1}, dest: {dest_1}")
+        except OSError as e:
+            print(f"Error:{e.strerror}")
+            QMessageBox.about(self, "Warning", '주의사항: 변경하고자하는 그림(source)이 없습니다.(image_found_1 탭을 확인하세요.)')
+            return
+        try:
+            dest_2 = os.path.dirname(self.pic_name_find2)+'\\'+self.info_le[0].text()+'_'+self.info_le[1].text()+'_'+self.info_le[2].text()+"_B.png"
+            os.rename(self.pic_name_find2, dest_2)
+            print(f"sorce: {self.pic_name_find2}, dest: {dest_2}")
+        except OSError as e:
+            print(f"Error:{e.strerror}")
+            QMessageBox.about(self, "Warning", '주의사항: 변경하고자하는 그림(source)이 없습니다.(image_found_1 탭을 확인하세요.)')
+            return
+        
+        return
 
     # X 버튼을 눌렀을 때 ...
     def closeEvent(self, event):
