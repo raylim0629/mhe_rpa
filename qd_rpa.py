@@ -81,6 +81,9 @@ class MyWindow(QWidget):
     shell = client.Dispatch("WScript.Shell")
     step = 0
 
+    adobe_reader = Application(backend="uia")
+    mspaint = Application(backend="win32")
+
     def __init__(self):
         super().__init__()
         self.setupUI()
@@ -95,11 +98,16 @@ class MyWindow(QWidget):
         self.file_menubar = self.myMenuBar.addMenu("&File")
         self.edit_menubar = self.myMenuBar.addMenu("Edit")
         self.view_menubar = self.myMenuBar.addMenu("view")
+        self.environment_menubar = self.myMenuBar.addMenu("Environment")
         self.help_menubar = self.myMenuBar.addMenu("Help")
         self.file_menubar.addAction("New")
         self.file_menubar.addAction("Open")
         self.file_menubar.addAction("Close")
         self.file_menubar.addAction("Exit")
+        self.view_menubar.addAction("Full_Screen")
+        self.environment_menubar.addAction("Acrobat")
+        self.environment_menubar.addAction("Mspaint")
+        self.help_menubar.addAction("Program Info.")
         layout.addWidget(self.myMenuBar,0,0,1,5)
         
         # Drawing group
@@ -186,7 +194,7 @@ class MyWindow(QWidget):
         self.terminal_browser = QTextBrowser()
         self.terminal_browser.setAcceptRichText(True)
         self.terminal_browser.setOpenExternalLinks(True)
-        self.terminal_browser.setFixedWidth(500)
+        #self.terminal_browser.setFixedWidth(650)
         self.terminal_layout.addWidget(self.terminal_browser)
         self.terminal_group.setLayout(self.terminal_layout)
         layout.addWidget(self.terminal_group, 5,1,7,1)
@@ -312,7 +320,9 @@ class MyWindow(QWidget):
         self.setGeometry(30, 50, 800, 800)
         self.setWindowTitle("Drawing Analyzer")
         self.setLayout(layout)
-        self.show() 
+        #self.show()
+        self.showMaximized()
+        #self.showFullScreen() 
 
     # 도면(pdf) 파일을 찾아서 이미지(png) 파일로 변경합니다. 
     def selectButtonClicked(self):
@@ -336,12 +346,11 @@ class MyWindow(QWidget):
             self.finding_obj_label_2.setText('DRM')
 
             if reply == QMessageBox.Yes:
-                self.adobe_reader = Application(backend="uia").start(cmd_line = 'C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe'+ ' ' + self.dwg_filename[0])
+                self.adobe_reader.start(cmd_line = 'C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe'+ ' ' + self.dwg_filename[0])
                 self.adobe_reader.connect(path='C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe')
                 time.sleep(0.1)
 
                 try:
-                    #self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Reader"
                     self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC"
                 except:
                     pass
@@ -350,13 +359,11 @@ class MyWindow(QWidget):
 
 
                 try:
-                    #self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
                     self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
                 except:
                     pass
 
                 self.terminal_browser.append(os.path.basename("opened with PID: " + str(self.adobe_reader_window_id) + "name" + self.adobe_reader_window_name))
-                #self.shell = win32com.client.Dispatch("WScript.Shell")
 
                 self.findAndCaptureDrmDrawing(page_no=1)
                 self.findAndCaptureDrmDrawing(page_no=2)
@@ -409,8 +416,9 @@ class MyWindow(QWidget):
 
         # Collect mouse events until released
         qd_event.mouse_listener()
-        mspaint = Application(backend="uia").start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_result_path)
-        mspaint.connect(path = 'C:\Windows\system32\mspaint.exe')
+        self.mspaint.start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_result_path)
+        self.mspaint.connect(path = 'C:\Windows\system32\mspaint.exe')
+
         mspaint_window_id = win32gui.GetForegroundWindow()
         print(mspaint_window_id)
         win32gui.SetForegroundWindow(mspaint_window_id)
@@ -441,7 +449,7 @@ class MyWindow(QWidget):
         #self.shell.SendKeys("{ENTER}")
         self.shell.SendKeys("%s",0)
         time.sleep(3)
-        mspaint.kill()
+        self.mspaint.kill()
         print(self.pic_name_find1)
         if page_no == 1: 
             pic = QPixmap(self.pic_name_find1)
