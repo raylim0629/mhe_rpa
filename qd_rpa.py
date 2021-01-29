@@ -79,6 +79,7 @@ class MyWindow(QWidget):
     pic_name_find1 = "{}.png".format(os.getpid())
     pic_name_find2 = "{}.png".format(os.getpid())
     shell = client.Dispatch("WScript.Shell")
+    step = 0
 
     def __init__(self):
         super().__init__()
@@ -110,7 +111,7 @@ class MyWindow(QWidget):
         self.drawing_combo = QComboBox(self)
         self.drawing_combo.addItems(dpi_list)
         self.drawing_combo.setCurrentIndex(1)
-        self.drawing_button_select = QPushButton("도면선택 and 이미지변환")
+        self.drawing_button_select = QPushButton("도면선택 + 이미지변환")
         self.drawing_button_select.clicked.connect(self.selectButtonClicked)
         self.drawing_tabs = QTabWidget()
         self.drawing_label = [QLabel('PDF-image',self) for i in range(10)]
@@ -140,7 +141,7 @@ class MyWindow(QWidget):
         self.finding_le_2.setPlaceholderText(find_obj_path)
         self.finding_obj_btn_2 = QPushButton("파일 선택-2")
         self.finding_obj_btn_2.clicked.connect(self.selectFindObjButtonClicked_2)
-        self.finding_anal_btn = QPushButton("찾아내기")
+        self.finding_anal_btn = QPushButton("찾아내기+OCR")
         self.finding_anal_btn.clicked.connect(self.findAnalyzeButtonClicked)
         self.finding_ocr_btn = QPushButton("OCR")
         self.finding_ocr_btn.clicked.connect(self.OcrButtonClicked)
@@ -382,14 +383,10 @@ class MyWindow(QWidget):
         self.dwg_img_files = [ f for f in listdir(drawing_img_path) if isfile(join(drawing_img_path,f)) ]
         self.images = [cv2.imread(file) for file in glob.glob(drawing_img_path + "/*.png")]
 
-        temp_filename = "{}.png".format(os.getpid())
-
         for i in range(0,len(self.dwg_img_files)):
-            cv2.imwrite(temp_filename, self.images[i])
-            pic = QPixmap(temp_filename)
+            pic = QPixmap(drawing_img_path +self.dwg_img_files[i])
             pic = pic.scaledToWidth(600)
             self.drawing_label[i].setPixmap(QPixmap(pic))
-            os.remove(temp_filename)
 
     # 도면에 DRM이 걸려 있을 경우...
     def findAndCaptureDrmDrawing(self,page_no = 1): 
@@ -459,7 +456,6 @@ class MyWindow(QWidget):
 
     # 내가 찾고자 하는 그림을 선택하는 버튼...을 눌렀을 때 기능
     def selectFindObjButtonClicked_1(self):
-        filename = "{}.png".format(os.getpid())
         self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', find_obj_path, "Images (*.png *.jpg)")
         if not self.finding_name[0]:
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
@@ -467,14 +463,11 @@ class MyWindow(QWidget):
 
         self.finding_le_1.setText(self.finding_name[0])
         self.obj_1 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
-        cv2.imwrite(filename, self.obj_1)
-        pic = QPixmap(filename)
+        pic = QPixmap(self.finding_name[0])
         pic=pic.scaledToWidth(600)
         self.finding_obj_label_1.setPixmap(QPixmap(pic))        
-        os.remove(filename)
-
+        
     def selectFindObjButtonClicked_2(self):
-        filename = "{}.png".format(os.getpid())
         self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', find_obj_path, "Images (*.png *.jpg)")
         if not self.finding_name[0]:
             QMessageBox.about(self, "Warning", "파일을 선택하지 않았습니다.")
@@ -482,12 +475,10 @@ class MyWindow(QWidget):
 
         self.finding_le_2.setText(self.finding_name[0])
         self.obj_2 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
-        cv2.imwrite(filename, self.obj_2)
-        pic = QPixmap(filename)
+        pic = QPixmap(self.finding_name[0])
         pic=pic.scaledToWidth(600)
         self.finding_obj_label_2.setPixmap(QPixmap(pic))        
-        os.remove(filename)
-
+        
     # 찾아낸 그림의 문자를 분석합니다...이미지 투 문자 (OCR)
     # 요게 잘 안되요... 업데이트가 필요합니다.
     def findAnalyzeButtonClicked(self):
