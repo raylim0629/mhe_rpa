@@ -29,3 +29,5 @@ template/
 # ignore all .pdf files in the doc/ directory
 doc/**/*.pdf
 __pycache__/qd_event.cpython-37.pyc
+qd_rpa.py.bak
+__pycache__/qd_event.cpython-37.pyc

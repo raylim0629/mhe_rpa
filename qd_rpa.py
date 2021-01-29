@@ -39,7 +39,7 @@ from PIL import Image
 from pywinauto.application import Application
 import time
 import win32gui
-import win32com
+from win32com import client
 from pynput import mouse
 import qd_event
 import ctypes
@@ -60,6 +60,7 @@ drawing_img_path = r'D:/qd_rpa/drawing_img/'           # 도면이 변환된 그
 find_obj_path = r'D:/qd_rpa/find_obj/'                  # 찾고자 하는 그림파일이 들어있는 폴더
 find_result_path = r'D:/qd_rpa/find_result/'            # 찾은 그림 파일이 들어있는 폴더
 find_result_man_path = r'D:/qd_rpa/find_result_man/'    ##@@ 찾고자 하는 '직접 캡쳐한' 그림파일이 들어있는 폴더
+template_path = r'D:/qd_rpa/template/'
 
 # OpenCV로 기능에서 이미지 (매칭)검색할 때 찾는 방법을 정의.
 # TM_CCOEFF_NORMED - 정규화된 상관계수 방법 (요것 만 활성화, 딴 건 잘 못찾아서...)
@@ -77,6 +78,7 @@ class MyWindow(QWidget):
 
     pic_name_find1 = "{}.png".format(os.getpid())
     pic_name_find2 = "{}.png".format(os.getpid())
+    shell = client.Dispatch("WScript.Shell")
 
     def __init__(self):
         super().__init__()
@@ -89,14 +91,14 @@ class MyWindow(QWidget):
         self.myMenuBar.setFixedHeight(25)
         self.myMenuBar.setNativeMenuBar(False)
         self.myMenuBar.palette().setColor(self.myMenuBar.foregroundRole(), Qt.gray)
-        file_menubar = self.myMenuBar.addMenu("&File")
-        edit_menubar = self.myMenuBar.addMenu("Edit")
-        view_menubar = self.myMenuBar.addMenu("view")
-        help_menubar = self.myMenuBar.addMenu("Help")
-        file_menubar.addAction("New")
-        file_menubar.addAction("Open")
-        file_menubar.addAction("Close")
-        file_menubar.addAction("Exit")
+        self.file_menubar = self.myMenuBar.addMenu("&File")
+        self.edit_menubar = self.myMenuBar.addMenu("Edit")
+        self.view_menubar = self.myMenuBar.addMenu("view")
+        self.help_menubar = self.myMenuBar.addMenu("Help")
+        self.file_menubar.addAction("New")
+        self.file_menubar.addAction("Open")
+        self.file_menubar.addAction("Close")
+        self.file_menubar.addAction("Exit")
         layout.addWidget(self.myMenuBar,0,0,1,5)
         
         # Drawing group
@@ -199,20 +201,11 @@ class MyWindow(QWidget):
         self.func_button_quit.clicked.connect(self.exit_app)
         self.func_button_ppt = QPushButton("PPT")
         self.func_button_ppt.clicked.connect(self.ppt_add_picture)
-        self.func_button_add_row = QPushButton("add row")
-        self.func_button_add_row.clicked.connect(self.add_row)
-        self.func_button_delete_row = QPushButton("delete row")
-        self.func_button_delete_row.clicked.connect(self.delete_row)
-        self.func_button_update_row = QPushButton("update row")
-        self.func_button_update_row.clicked.connect(self.update_row)
         self.func_button_update_image = QPushButton("update image name")
         self.func_button_update_image.clicked.connect(self.updateImageName)
         self.func_button_layout.addWidget(self.func_button_clear,0,0,1,1)
         self.func_button_layout.addWidget(self.func_button_ppt,0,1,1,1)
-        self.func_button_layout.addWidget(self.func_button_add_row,0,2,1,1)
-        self.func_button_layout.addWidget(self.func_button_delete_row,0,3,1,1)
-        self.func_button_layout.addWidget(self.func_button_update_row,1,0,1,1)
-        self.func_button_layout.addWidget(self.func_button_update_image,1,1,1,1)
+        self.func_button_layout.addWidget(self.func_button_update_image,0,2,1,1)
         self.func_button_layout.addWidget(self.func_button_quit,1,3,1,1)
         self.func_button_group.setLayout(self.func_button_layout)
         layout.addWidget(self.func_button_group,12,1,1,1)
@@ -234,6 +227,22 @@ class MyWindow(QWidget):
             self.info_layout.addWidget(self.info_le[idx],(idx),1,1,2)
         self.info_group.setLayout(self.info_layout)
         layout.addWidget(self.info_group,5,2,7,1)
+
+        #information Control button
+        self.info_button_group = QGroupBox('information_control_buttons')
+        self.info_button_layout = QGridLayout()
+        self.func_button_add_row = QPushButton("add row")
+        self.func_button_add_row.clicked.connect(self.add_row)
+        self.func_button_delete_row = QPushButton("delete row")
+        self.func_button_delete_row.clicked.connect(self.delete_row)
+        self.func_button_update_row = QPushButton("update row")
+        self.func_button_update_row.clicked.connect(self.update_row)
+
+        self.info_button_layout.addWidget(self.func_button_add_row,0,0,1,1)
+        self.info_button_layout.addWidget(self.func_button_delete_row,0,1,1,1)
+        self.info_button_layout.addWidget(self.func_button_update_row,0,2,1,1)
+        self.info_button_group.setLayout(self.info_button_layout)
+        layout.addWidget(self.info_button_group,12,2,1,1)
 
         # documentation button
         # 문서를 출력하기 위한 버튼 모음 입니다.
@@ -264,7 +273,7 @@ class MyWindow(QWidget):
         self.selenium_button_mail.clicked.connect(self.mail_document)
         self.selenium_button_layout.addWidget(self.selenium_button_mail,0,0,1,1)
         self.selenium_button_group.setLayout(self.selenium_button_layout)
-        layout.addWidget(self.selenium_button_group,12,2,1,3)
+        layout.addWidget(self.selenium_button_group,12,3,1,1)
 
         # data table
         # Data들을 관리하기 위한 테이블 입니다. (DB 관리용)
@@ -340,13 +349,13 @@ class MyWindow(QWidget):
 
 
                 try:
-                    self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
-                    #self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
+                    #self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Reader" + " opened with PID: " + str(self.adobe_reader_window_id))
+                    self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
                 except:
                     pass
 
                 self.terminal_browser.append(os.path.basename("opened with PID: " + str(self.adobe_reader_window_id) + "name" + self.adobe_reader_window_name))
-                self.shell = win32com.client.Dispatch("WScript.Shell")
+                #self.shell = win32com.client.Dispatch("WScript.Shell")
 
                 self.findAndCaptureDrmDrawing(page_no=1)
                 self.findAndCaptureDrmDrawing(page_no=2)
@@ -421,8 +430,6 @@ class MyWindow(QWidget):
                 print(f"Error:{e.strerror}")
             
             self.pic_name_find1 = os.path.abspath(find_result_man_path) + '\\find_1.png'
-            #self.pic_name_find1 += os.path.splitext(os.path.basename(self.dwg_filename[0]))[0]
-            #self.pic_name_find1 += datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
             self.shell.SendKeys(self.pic_name_find1)
 
         elif page_no == 2: 
@@ -431,8 +438,6 @@ class MyWindow(QWidget):
             except OSError as e:
                 print(f"Error:{e.strerror}")
             self.pic_name_find2 = os.path.abspath(find_result_man_path) + '\\find_2.png'
-            #self.pic_name_find2 += os.path.splitext(os.path.basename(self.dwg_filename[0]))[0]
-            #self.pic_name_find2 += datetime.today().strftime('%Y%m%d_%H%M%S_') + str(page_no) + ".png"
             self.shell.SendKeys(self.pic_name_find2)
 
         time.sleep(3)
@@ -496,7 +501,6 @@ class MyWindow(QWidget):
         except:
             QMessageBox.about(self, "Warning", "도면을 선택되지 않았습니다.")
             return
-        
         
         for n in range(0,len(self.dwg_img_files)):
             for i, method_name in enumerate(methods):
@@ -595,6 +599,17 @@ class MyWindow(QWidget):
         text = text.replace("\n\n","\n")
         text = text.replace(" \n","")
         self.terminal_browser.append(text)
+        
+        self.info_le[0].setText(text[text.find("1 Pro",):text.find("\n",text.find("1 Pro",),)].replace("1 Project Name ","")) 
+        self.info_le[6].setText(text[text.find("2 H/W",):text.find("\n",text.find("2 H/W",),)].replace("2 H/W, S/W Ver. ","")) 
+        self.info_le[7].setText(text[text.find("3 OEM",):text.find("\n",text.find("3 OEM",),)].replace("3 OEM P/NO ",""))
+        self.info_le[8].setText(text[text.find("4 MAN",):text.find("\n",text.find("4 MAN",),)].replace("4 MANDO ",""))
+        self.info_le[9].setText(text[text.find("5 Sup",):text.find("\n",text.find("5 Sup",),)].replace("5 Supplier P/No ",""))
+        
+        file = open('info.txt','w')
+        file.writelines(str(text.encode('utf-8-sig')))
+        file.close()
+
         return
 
     # 터미널 창을 깨끗하게...
@@ -707,6 +722,7 @@ class MyWindow(QWidget):
         try:
             dest_1 = os.path.dirname(self.pic_name_find1)+'\\'+self.info_le[0].text()+'_'+self.info_le[1].text()+'_'+self.info_le[2].text()+"_A.png"
             os.rename(self.pic_name_find1, dest_1)
+            self.terminal_browser.append(f"file renamed and saved - sorce: {self.pic_name_find1}, dest: {dest_1}")
             print(f"sorce: {self.pic_name_find1}, dest: {dest_1}")
         except OSError as e:
             print(f"Error:{e.strerror}")
@@ -715,6 +731,7 @@ class MyWindow(QWidget):
         try:
             dest_2 = os.path.dirname(self.pic_name_find2)+'\\'+self.info_le[0].text()+'_'+self.info_le[1].text()+'_'+self.info_le[2].text()+"_B.png"
             os.rename(self.pic_name_find2, dest_2)
+            self.terminal_browser.append(f"file renamed and saved - sorce: {self.pic_name_find2}, dest: {dest_2}")
             print(f"sorce: {self.pic_name_find2}, dest: {dest_2}")
         except OSError as e:
             print(f"Error:{e.strerror}")
