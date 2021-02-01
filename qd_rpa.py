@@ -396,6 +396,8 @@ class MyWindow(QWidget):
             self.drawing_label[i].setPixmap(QPixmap(pic))
 
     # 도면에 DRM이 걸려 있을 경우...
+    ##@@ [To do list] Contents 영역과 Revision 영역에 대한 구분 요청 필요
+
     def findAndCaptureDrmDrawing(self,page_no = 1): 
         win32gui.SetForegroundWindow(self.adobe_reader_window_id)
         time.sleep(0.1)
@@ -427,7 +429,7 @@ class MyWindow(QWidget):
         time.sleep(0.1)
         #self.shell.SendKeys("^s",0)
         self.shell.SendKeys("{F12}",0)
-        time.sleep(0.1)
+        time.sleep(1)
         if page_no == 1: 
             try:
                 os.remove(os.path.abspath(find_result_man_path) + '\\find_1.png')
@@ -704,6 +706,7 @@ class MyWindow(QWidget):
 
         print(self.df)
 
+    ##@@ [To do list] 해당 이미지가 있는 경우에 대한 예외처리 필요
     def updateImageName(self):
         if not self.info_le[0].text():
             print("project info. is empty")
@@ -719,7 +722,7 @@ class MyWindow(QWidget):
             return
 
         try:
-            dest_1 = os.path.dirname(self.pic_name_find1)+'\\'+self.info_le[0].text()+'_'+self.info_le[1].text()+'_'+self.info_le[2].text()+"_A.png"
+            dest_1 = os.path.dirname(self.pic_name_find1)+'\\'+self.info_le[0].text()+'_rev'+self.info_le[2].text()+"_contents.png"
             os.rename(self.pic_name_find1, dest_1)
             self.terminal_browser.append(f"file renamed and saved - sorce: {self.pic_name_find1}, dest: {dest_1}")
             print(f"sorce: {self.pic_name_find1}, dest: {dest_1}")
@@ -728,7 +731,7 @@ class MyWindow(QWidget):
             QMessageBox.about(self, "Warning", '주의사항: 변경하고자하는 그림(source)이 없습니다.(image_found_1 탭을 확인하세요.)')
             return
         try:
-            dest_2 = os.path.dirname(self.pic_name_find2)+'\\'+self.info_le[0].text()+'_'+self.info_le[1].text()+'_'+self.info_le[2].text()+"_B.png"
+            dest_2 = os.path.dirname(self.pic_name_find2)+'\\'+self.info_le[0].text()+'_rev'+self.info_le[2].text()+"_revision.png"
             os.rename(self.pic_name_find2, dest_2)
             self.terminal_browser.append(f"file renamed and saved - sorce: {self.pic_name_find2}, dest: {dest_2}")
             print(f"sorce: {self.pic_name_find2}, dest: {dest_2}")
@@ -761,8 +764,9 @@ class MyWindow(QWidget):
 
     def open_file(self):
 
+
         QMessageBox.about(self, "Warning", '주의사항: 파일 생성 전, 생성할 차종 선택 필수')
-        fname = QFileDialog.getOpenFileName(self, 'Open file', './template/',)
+        fname = QFileDialog.getOpenFileName(self, 'Open file', template_path)
 
         return fname
 
@@ -913,7 +917,7 @@ class MyWindow(QWidget):
             sheet_name = 'S36_EK(A)'
             anchor = 'L24'
             target_width = 270
-            image_type = '_contents.jpg'
+            image_type = '_contents.png'
             load_wb = self.insert_image(load_wb, sheet_name, anchor, target_width, image_type)
         
         except:
@@ -973,7 +977,7 @@ class MyWindow(QWidget):
         #sheet_name = '초도품 적용 통보서'
         anchor = 'P11'
         target_width = 260
-        image_type = '_contents.jpg'
+        image_type = '_contents.png'
         load_wb = self.insert_image(load_wb, sheet_name, anchor, target_width, image_type)
         
         self.set_file_name(fname)  ##@@ build file I/O function by regular expression
@@ -982,7 +986,7 @@ class MyWindow(QWidget):
         #sheet_name = '초도품 적용 통보서'
         anchor = 'P18'
         target_width = 260
-        image_type = '_revision.jpg'
+        image_type = '_revision.png'
         load_wb = self.insert_image(load_wb, sheet_name, anchor, target_width, image_type)
 
         self.set_file_name(fname)  ##@@ build file I/O function by regular expression
