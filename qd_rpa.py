@@ -173,10 +173,10 @@ class MyWindow(QWidget):
         self.finding_match_label_2.setFont(font)
 
         self.finding_tabs = QTabWidget()
-        self.finding_tabs.addTab(self.finding_obj_label_1, 'finding_obj_1')
-        self.finding_tabs.addTab(self.finding_match_label_1, 'found_match_1')
-        self.finding_tabs.addTab(self.finding_obj_label_2, 'finding_obj_2')
-        self.finding_tabs.addTab(self.finding_match_label_2, 'found_match_2')
+        self.finding_tabs.addTab(self.finding_obj_label_1, '_obj_1')
+        self.finding_tabs.addTab(self.finding_match_label_1, 'find_1')
+        self.finding_tabs.addTab(self.finding_obj_label_2, 'obj_2')
+        self.finding_tabs.addTab(self.finding_match_label_2, 'find_2')
         self.finding_layout.addWidget(self.finding_le_1,0,0,1,4)
         self.finding_layout.addWidget(self.finding_obj_btn_1,0,4,1,1)
         self.finding_layout.addWidget(self.finding_le_2,1,0,1,4)
@@ -380,6 +380,8 @@ class MyWindow(QWidget):
                 os.remove(png_file)
             except OSError as e:
                 print(f"Error:{e.strerror}")
+                QMessageBox.about(self, "Warning", f"Error:{e.strerror}")
+
         
         for i, page in enumerate(pages):
             dwg_img_filename = drawing_img_path+os.path.basename(self.dwg_filename[0])[:-4]
@@ -435,6 +437,7 @@ class MyWindow(QWidget):
                 os.remove(os.path.abspath(find_result_man_path) + '\\find_1.png')
             except OSError as e:
                 print(f"Error:{e.strerror}")
+#                QMessageBox.about(self, "Warning", f"Error:{e.strerror}")
             
             self.pic_name_find1 = os.path.abspath(find_result_man_path) + '\\find_1.png'
             self.shell.SendKeys(self.pic_name_find1)
@@ -444,6 +447,8 @@ class MyWindow(QWidget):
                 os.remove(os.path.abspath(find_result_man_path) + '\\find_2.png')
             except OSError as e:
                 print(f"Error:{e.strerror}")
+#                QMessageBox.about(self, "Warning", f"Error:{e.strerror}")
+
             self.pic_name_find2 = os.path.abspath(find_result_man_path) + '\\find_2.png'
             self.shell.SendKeys(self.pic_name_find2)
 
@@ -475,7 +480,9 @@ class MyWindow(QWidget):
         self.obj_1 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
         pic = QPixmap(self.finding_name[0])
         pic=pic.scaledToWidth(600)
-        self.finding_obj_label_1.setPixmap(QPixmap(pic))        
+        self.finding_obj_label_1.setPixmap(QPixmap(pic))
+        self.finding_tabs.setTabText(0, os.path.basename(self.finding_name[0]))
+        
         
     def selectFindObjButtonClicked_2(self):
         self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', find_obj_path, "Images (*.png *.jpg)")
@@ -487,7 +494,8 @@ class MyWindow(QWidget):
         self.obj_2 = cv2.imread(self.finding_name[0]) # 찾으려는 이미지
         pic = QPixmap(self.finding_name[0])
         pic=pic.scaledToWidth(600)
-        self.finding_obj_label_2.setPixmap(QPixmap(pic))        
+        self.finding_obj_label_2.setPixmap(QPixmap(pic))
+        self.finding_tabs.setTabText(2,os.path.basename(self.finding_name[0]))        
         
     # 찾아낸 그림의 문자를 분석합니다...이미지 투 문자 (OCR)
     # 요게 잘 안되요... 업데이트가 필요합니다.
@@ -568,6 +576,7 @@ class MyWindow(QWidget):
         pic.save(self.pic_name_find1,'PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_1.setPixmap(pic_display)
+        self.finding_tabs.setTabText(1, os.path.basename(self.pic_name_find1))
         os.remove(filename_1)
 
         cv2.imwrite(filename_2, final_image_2)
@@ -576,6 +585,7 @@ class MyWindow(QWidget):
         pic.save(self.pic_name_find2,'PNG')
         pic_display=pic.scaledToWidth(600)
         self.finding_match_label_2.setPixmap(pic_display)
+        self.finding_tabs.setTabText(3, os.path.basename(self.pic_name_find2))
         os.remove(filename_2)
 
         # fill line editor
@@ -723,21 +733,31 @@ class MyWindow(QWidget):
 
         try:
             dest_1 = os.path.dirname(self.pic_name_find1)+'\\'+self.info_le[0].text()+'_rev'+self.info_le[2].text()+"_contents.png"
-            os.rename(self.pic_name_find1, dest_1)
+            #os.rename(self.pic_name_find1, dest_1)
+            os.replace(self.pic_name_find1, dest_1)
             self.terminal_browser.append(f"file renamed and saved - sorce: {self.pic_name_find1}, dest: {dest_1}")
             print(f"sorce: {self.pic_name_find1}, dest: {dest_1}")
+            self.pic_name_find1 = dest_1
+            self.finding_tabs.setTabText(1, os.path.basename(self.pic_name_find1))
+        #except FileExistsError:
+        #    pass
         except OSError as e:
             print(f"Error:{e.strerror}")
-            QMessageBox.about(self, "Warning", '주의사항: 변경하고자하는 그림(source)이 없습니다.(image_found_1 탭을 확인하세요.)')
+            QMessageBox.about(self, "Warning", f"Error:{e.strerror}")
             return
         try:
             dest_2 = os.path.dirname(self.pic_name_find2)+'\\'+self.info_le[0].text()+'_rev'+self.info_le[2].text()+"_revision.png"
-            os.rename(self.pic_name_find2, dest_2)
+            #os.rename(self.pic_name_find2, dest_2)
+            os.replace(self.pic_name_find2, dest_2)
             self.terminal_browser.append(f"file renamed and saved - sorce: {self.pic_name_find2}, dest: {dest_2}")
             print(f"sorce: {self.pic_name_find2}, dest: {dest_2}")
+            self.pic_name_find2 = dest_2
+            self.finding_tabs.setTabText(3, os.path.basename(self.pic_name_find2))
+        #except FileExistsError:
+        #    pass
         except OSError as e:
             print(f"Error:{e.strerror}")
-            QMessageBox.about(self, "Warning", '주의사항: 변경하고자하는 그림(source)이 없습니다.(image_found_1 탭을 확인하세요.)')
+            QMessageBox.about(self, "Warning", f"Error:{e.strerror}")
             return
         
         return
@@ -1132,6 +1152,8 @@ class MyWindow(QWidget):
 
         except Exception as e:
             print(e)
+            QMessageBox.about(self, "Error", f"Error:{e.strerror}")
+
         
         return
 
