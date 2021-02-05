@@ -9,6 +9,7 @@
 from contextlib import nullcontext
 import sys
 import warnings
+import numpy as np
 
 from numpy.lib.function_base import select
 from numpy.lib.histograms import histogram
@@ -427,6 +428,13 @@ class MyWindow(QWidget):
         print(mspaint_window_id)
         win32gui.SetForegroundWindow(mspaint_window_id)
         time.sleep(0.1)
+        self.shell.SendKeys("^e",0)
+        self.shell.SendKeys("%w",0)
+        self.shell.SendKeys("100")
+        self.shell.SendKeys("%h",0)
+        self.shell.SendKeys("100")
+        self.shell.SendKeys("{ENTER}")
+        time.sleep(0.1)
         self.shell.SendKeys("^v",0)
         time.sleep(0.1)
         #self.shell.SendKeys("^s",0)
@@ -455,7 +463,7 @@ class MyWindow(QWidget):
         time.sleep(3)
         #self.shell.SendKeys("{ENTER}")
         self.shell.SendKeys("%s",0)
-        time.sleep(3)
+        time.sleep(2)
         self.mspaint.kill()
         print(self.pic_name_find1)
         if page_no == 1: 
@@ -563,9 +571,51 @@ class MyWindow(QWidget):
             if final_match_val_2 < match_val:
                 final_match_val_2 = match_val
                 final_image_2 = self.images[n][top_left[1]:top_left[1]+self.obj_2.shape[0]+500, top_left[0]:top_left[0]+self.obj_2.shape[1]]
+        '''
+        minLineLength = 20
+        maxLineGap = 20
+        gray_1 = cv2.cvtColor(final_image_1, cv2.COLOR_BGR2GRAY)
+        edges_1 = cv2.Canny(gray_1,50,150,apertureSize=3)
+        lines = cv2.HoughLinesP(edges_1,1,np.pi/180,130,minLineLength,maxLineGap)
+        for line in lines:
+            x1,y1,x2,y2 = line[0]
+            cv2.line(final_image_1,(x1,y1),(x2,y2),(255,255,255),3)
 
+        gray_2 = cv2.cvtColor(final_image_2, cv2.COLOR_BGR2GRAY)
+        edges_2 = cv2.Canny(gray_2,50,150,apertureSize=3)
+        lines = cv2.HoughLinesP(edges_2,1,np.pi/180,130,minLineLength,maxLineGap)
+        for line in lines:
+            x1,y1,x2,y2 = line[0]
+            cv2.line(final_image_2,(x1,y1),(x2,y2),(255,255,255),3)
+        '''
         text = pytesseract.image_to_string(final_image_1, config=custom_config)
         text += pytesseract.image_to_string(final_image_2, config=custom_config) 
+        
+        lines = text.split("\n")
+        lines = list(filter(None,lines))
+        while ' ' in lines:
+            lines.remove(' ')
+
+        version_info = str()
+        search = "2020"
+        date_pos = int()
+
+        for line in reversed(lines):
+            #print(line.find('2'))
+            if search in line:
+                version_info = line
+                break
+
+        for i, alpabet in enumerate(version_info):
+            if version_info[i] == '2' and version_info[i+1] == '0' and version_info[i+2] == '2':
+                date_pos = i
+                break
+
+        self.info_le[2].setText(version_info[version_info.find(' ')-1:version_info.find(' ')])
+        self.info_le[3].setText(version_info[date_pos:date_pos+10])
+        self.info_le[4].setText(version_info[date_pos-12:date_pos-3])
+        self.info_le[5].setText(version_info[version_info.find(' ')+1:date_pos-14])
+        
         text = text.replace("\n\n","\n")
         text = text.replace(" \n","")
         self.terminal_browser.append(text)
@@ -605,18 +655,50 @@ class MyWindow(QWidget):
         self.terminal_browser.append(f'2nd image match late:' + str(round(final_match_val_1*100,4)) + "%")     
 
     def OcrButtonClicked(self):
-        text = pytesseract.image_to_string(Image.open(self.pic_name_find1)) 
-        text += pytesseract.image_to_string(Image.open(self.pic_name_find2))
+        try:
+            text = pytesseract.image_to_string(Image.open(self.pic_name_find1)) 
+            text += pytesseract.image_to_string(Image.open(self.pic_name_find2))
+        except OSError as e:
+            print(e)
+            QMessageBox.about(self, "Warning", f"Error:{e.strerror}")
+            return
+        lines = text.split("\n")
+        lines = list(filter(None,lines))
+        while ' ' in lines:
+            lines.remove(' ')
+
+        version_info = str()
+        search = "2020"
+        date_pos = int()
+
+        for line in reversed(lines):
+            #print(line.find('2'))
+            if search in line:
+                version_info = line
+                break
+
+        for i, alpabet in enumerate(version_info):
+            if version_info[i] == '2' and version_info[i+1] == '0' and version_info[i+2] == '2':
+                date_pos = i
+                break
+
+        self.info_le[2].setText(version_info[version_info.find(' ')-1:version_info.find(' ')])
+        self.info_le[3].setText(version_info[date_pos:date_pos+10])
+        self.info_le[4].setText(version_info[date_pos-12:date_pos-3])
+        self.info_le[5].setText(version_info[version_info.find(' ')+1:date_pos-14])
+
         text = text.replace("\n\n","\n")
         text = text.replace(" \n","")
         self.terminal_browser.append(text)
         
-        self.info_le[0].setText(text[text.find("1 Pro",):text.find("\n",text.find("1 Pro",),)].replace("1 Project Name ","")) 
-        self.info_le[6].setText(text[text.find("2 H/W",):text.find("\n",text.find("2 H/W",),)].replace("2 H/W, S/W Ver. ","")) 
-        self.info_le[7].setText(text[text.find("3 OEM",):text.find("\n",text.find("3 OEM",),)].replace("3 OEM P/NO ",""))
-        self.info_le[8].setText(text[text.find("4 MAN",):text.find("\n",text.find("4 MAN",),)].replace("4 MANDO ",""))
-        self.info_le[9].setText(text[text.find("5 Sup",):text.find("\n",text.find("5 Sup",),)].replace("5 Supplier P/No ",""))
-        
+        self.info_le[0].setText(text[text.find("Project",):text.find("\n",text.find("Project",),)].replace("Project Name ","")) 
+        self.info_le[6].setText(text[text.find("H/W",):text.find("\n",text.find("H/W",),)].replace("H/W, S/W Ver. ","")) 
+        self.info_le[7].setText(text[text.find("OEM",):text.find("\n",text.find("OEM",),)].replace("OEM P/NO ",""))
+        self.info_le[8].setText(text[text.find("MANDO",):text.find("\n",text.find("MANDO",),)].replace("MANDO P/No",""))
+        self.info_le[9].setText(text[text.find("Supplier",):text.find("\n",text.find("Supplier",),)].replace("Supplier P/No ",""))
+        self.info_le[10].setText(text[text.find("NSR No. :",):text.find("\n",text.find("NSR No.",),)].replace("NSR No. : ",""))
+        self.info_le[12].setText(datetime.today().strftime('%Y%m%d'))
+
         file = open('info.txt','w')
         file.writelines(str(text.encode('utf-8-sig')))
         file.close()
@@ -686,6 +768,8 @@ class MyWindow(QWidget):
 
     # Table (DB)에 열을 선하면 내용을 Line Editor에 뿌려 줍니다.
     def item_clicked(self):
+        #QMessageBox.about(self, "Warning", self.data_table_pjt.currentItem().text() + f"Column No: {self.data_table_pjt.currentItem().column()}, Row:{self.data_table_pjt.currentItem().row()}")
+
         self.data_table_pjt.selectRow(self.data_table_pjt.currentRow())
         for i, le in enumerate(self.info_le):
             le.setText(self.data_table_pjt.item(self.data_table_pjt.currentRow(),i).text())
