@@ -402,10 +402,12 @@ class MyWindow(QWidget):
     ##@@ [To do list] Contents 영역과 Revision 영역에 대한 구분 요청 필요
 
     def findAndCaptureDrmDrawing(self,page_no = 1): 
+        text_message = ["Contents","Revision"]
+        
         win32gui.SetForegroundWindow(self.adobe_reader_window_id)
         time.sleep(0.1)
         self.shell.SendKeys('^0',0)
-        msg = ctypes.windll.user32.MessageBoxW(None, "도면에서 확대하고자하는 영역을 선택하세요.", "확대", 0x00040000)
+        msg = ctypes.windll.user32.MessageBoxW(None, f"도면에서 {text_message[page_no-1]}(확대) 영역을 선택하세요.", "확대", 0x00040040)
         self.shell.SendKeys('{F10}')
         self.shell.SendKeys('V')
         self.shell.SendKeys('Z')
@@ -413,7 +415,7 @@ class MyWindow(QWidget):
 
         # Collect mouse events until released
         qd_event.mouse_listener()
-        msg = ctypes.windll.user32.MessageBoxW(None, "도면에서 캡쳐하고자하는 영역을 선택하세요.", "캡쳐", 0x00040000)
+        msg = ctypes.windll.user32.MessageBoxW(None, f"도면에서 {text_message[page_no-1]}(캡쳐) 영역을 선택하세요.", "캡쳐", 0x00040040)
         win32gui.SetForegroundWindow(self.adobe_reader_window_id)
         self.shell.SendKeys('{F10}')
         self.shell.SendKeys('E')
@@ -1236,7 +1238,7 @@ class MyWindow(QWidget):
 
         except Exception as e:
             print(e)
-            QMessageBox.about(self, "Error", f"Error:{e.strerror}")
+            #QMessageBox.about(self, "Error", f"Error:{e.strerror}")
 
         
         return
