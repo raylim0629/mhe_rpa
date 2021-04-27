@@ -5,6 +5,9 @@
 # Copyright Limited <seonghyu.lim@mandohella.com>
 #                   <hclee@mandohella.com>
 # Generated @ 2021.Jan.15th ~ 
+#
+#
+
 
 from contextlib import nullcontext
 import sys
@@ -13,8 +16,10 @@ import numpy as np
 
 from numpy.lib.function_base import select
 from numpy.lib.histograms import histogram
+
 warnings.simplefilter("ignore", UserWarning)
 sys.coinit_flags = 2
+
 import glob
 import os
 import cv2
@@ -26,6 +31,7 @@ import openpyxl
 
 from datetime import datetime ##@@ datetime.datetime (import) to attach date on filename
 from pdf2image import convert_from_path
+
 from os.path import isfile, join
 from os.path import *
 from os import listdir
@@ -75,7 +81,7 @@ dpi_list = ['100','200','300','400','800','1600']
 # Tesseract 이미지 to 문자 변환 Option 입니다. (영어 + 한글) 
 custom_config = r'-l eng+kor'
 
-class MyWindow(QWidget):  
+class MyWindow(QWidget):
 
     pic_name_find1 = "{}.png".format(os.getpid())
     pic_name_find2 = "{}.png".format(os.getpid())
@@ -88,6 +94,8 @@ class MyWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setupUI()
+        self.template_path = template_path
+        self.drawing_path = drawing_path
 
     def setupUI(self):
         # 전체 Layout은 Grid 형태 입니다.
@@ -323,11 +331,17 @@ class MyWindow(QWidget):
         self.setLayout(layout)
         #self.show()
         self.showMaximized()
-        #self.showFullScreen() 
+        #self.showFullScreen()
 
     # 도면(pdf) 파일을 찾아서 이미지(png) 파일로 변경합니다. 
     def selectButtonClicked(self):
-        self.dwg_filename = QFileDialog.getOpenFileName(self, 'Open file', drawing_path)
+
+        self.dwg_filename = QFileDialog.getOpenFileName(self, 'Open file', self.drawing_path)
+        
+        updated_path = os.path.dirname(self.dwg_filename[0])
+        self.template_path = updated_path
+
+
         if not self.dwg_filename[0]:
             QMessageBox.about(self, "Warning", "Drawing 파일을 선택되지 않았습니다.")
             return
@@ -336,7 +350,7 @@ class MyWindow(QWidget):
         self.terminal_browser.append(self.dwg_filename[0])
     
         try:
-            pages = convert_from_path(self.dwg_filename[0], dpi=int(self.drawing_combo.currentText()))    
+            pages = convert_from_path(self.dwg_filename[0], dpi=int(self.drawing_combo.currentText()))
         except:         # DRM에 걸려 있는경우 직접 PDF파일을 캡쳐해서 저장함
             print("Unexpected error:", sys.exc_info()[0])
             reply = QMessageBox.question(self, "Warning", "PDF 파일이 DRM에 걸려 있습니다. 직접 선택 영역을 직접 선택하시겠습니까?",
@@ -353,23 +367,22 @@ class MyWindow(QWidget):
 
                 try:
                     self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC"
-                except:
-                    pass
-
-                self.adobe_reader_window_id = win32gui.FindWindow(None, self.adobe_reader_window_name)
-
-
-                try:
+                    self.adobe_reader_window_id = win32gui.FindWindow(None, self.adobe_reader_window_name)
                     self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC" + " opened with PID: " + str(self.adobe_reader_window_id))
+                    self.terminal_browser.append(os.path.basename("opened with PID: " + str(self.adobe_reader_window_id) + "name" + self.adobe_reader_window_name))
+                    self.findAndCaptureDrmDrawing(page_no=1)
+                    self.findAndCaptureDrmDrawing(page_no=2)
+                   
                 except:
-                    pass
-
-                self.terminal_browser.append(os.path.basename("opened with PID: " + str(self.adobe_reader_window_id) + "name" + self.adobe_reader_window_name))
-
-                self.findAndCaptureDrmDrawing(page_no=1)
-                self.findAndCaptureDrmDrawing(page_no=2)
+                    self.adobe_reader_window_name = os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC (32-bit)"
+                    self.adobe_reader_window_id = win32gui.FindWindow(None, self.adobe_reader_window_name)
+                    self.terminal_browser.append(os.path.basename(self.dwg_filename[0]) + " - Adobe Acrobat Reader DC (32-bit)" + " opened with PID: " + str(self.adobe_reader_window_id))
+                    self.terminal_browser.append(os.path.basename("opened with PID: " + str(self.adobe_reader_window_id) + "name" + self.adobe_reader_window_name))
+                    self.findAndCaptureDrmDrawing(page_no=1)
+                    self.findAndCaptureDrmDrawing(page_no=2)
 
                 self.adobe_reader.kill()
+                time.sleep(0.5)
 
                 return
             else:
@@ -405,40 +418,55 @@ class MyWindow(QWidget):
         text_message = ["Contents","Revision"]
         
         win32gui.SetForegroundWindow(self.adobe_reader_window_id)
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.shell.SendKeys('^0',0)
         msg = ctypes.windll.user32.MessageBoxW(None, f"도면에서 {text_message[page_no-1]}(확대) 영역을 선택하세요.", "확대", 0x00040040)
         self.shell.SendKeys('{F10}')
+        time.sleep(0.2)
         self.shell.SendKeys('V')
+        time.sleep(0.2)
         self.shell.SendKeys('Z')
+        time.sleep(0.2)
         self.shell.SendKeys('M')
 
+        time.sleep(0.5)
         # Collect mouse events until released
         qd_event.mouse_listener()
+        time.sleep(0.5)
         msg = ctypes.windll.user32.MessageBoxW(None, f"도면에서 {text_message[page_no-1]}(캡쳐) 영역을 선택하세요.", "캡쳐", 0x00040040)
         win32gui.SetForegroundWindow(self.adobe_reader_window_id)
         self.shell.SendKeys('{F10}')
+        time.sleep(0.2)
         self.shell.SendKeys('E')
+        time.sleep(0.2)
         self.shell.SendKeys('A')
 
+        time.sleep(0.5)
         # Collect mouse events until released
         qd_event.mouse_listener()
+        time.sleep(0.5)
+
         self.mspaint.start(cmd_line = 'C:\Windows\system32\mspaint.exe', work_dir=find_result_path)
         self.mspaint.connect(path = 'C:\Windows\system32\mspaint.exe')
 
         mspaint_window_id = win32gui.GetForegroundWindow()
-        print(mspaint_window_id)
+        print('mspaint_window_id : ', mspaint_window_id)
         win32gui.SetForegroundWindow(mspaint_window_id)
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.shell.SendKeys("^e",0)
+        time.sleep(0.2)
         self.shell.SendKeys("%w",0)
+        time.sleep(0.2)
         self.shell.SendKeys("100")
+        time.sleep(0.2)
         self.shell.SendKeys("%h",0)
+        time.sleep(0.2)
         self.shell.SendKeys("100")
+        time.sleep(0.2)
         self.shell.SendKeys("{ENTER}")
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.shell.SendKeys("^v",0)
-        time.sleep(0.1)
+        time.sleep(0.2)
         #self.shell.SendKeys("^s",0)
         self.shell.SendKeys("{F12}",0)
         time.sleep(1)
@@ -462,7 +490,7 @@ class MyWindow(QWidget):
             self.pic_name_find2 = os.path.abspath(find_result_man_path) + '\\find_2.png'
             self.shell.SendKeys(self.pic_name_find2)
 
-        time.sleep(3)
+        time.sleep(2)
         #self.shell.SendKeys("{ENTER}")
         self.shell.SendKeys("%s",0)
         time.sleep(2)
@@ -476,6 +504,8 @@ class MyWindow(QWidget):
             pic = QPixmap(self.pic_name_find2)
             pic = pic.scaledToWidth(600)
             self.finding_match_label_2.setPixmap(QPixmap(pic))
+        
+        time.sleep(0.5)
         
         return
 
@@ -872,7 +902,10 @@ class MyWindow(QWidget):
 
 
         QMessageBox.about(self, "Warning", '주의사항: 파일 생성 전, 생성할 차종 선택 필수')
-        fname = QFileDialog.getOpenFileName(self, 'Open file', template_path)
+        fname = QFileDialog.getOpenFileName(self, 'Open file', self.template_path)
+
+        updated_path = os.path.dirname(fname[0])
+        self.template_path = updated_path
 
         return fname
 
