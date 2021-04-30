@@ -6,7 +6,7 @@
 #                   <hclee@mandohella.com>
 # Generated @ 2021.Jan.15th ~ 
 #
-#
+
 from contextlib import nullcontext
 import sys
 import warnings
@@ -48,6 +48,7 @@ import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager   ## to match correct driver version
+import easyocr
 
 ########################################
 
@@ -353,7 +354,7 @@ class Finding_group(QGroupBox):
         pic=pic.scaledToWidth(600)
         self.finding_obj_label_1.setPixmap(QPixmap(pic))
         self.finding_tabs.setTabText(0, os.path.basename(self.finding_name[0]))
-        
+        self.finding_tabs.setCurrentIndex(0)
         
     def selectFindObjButtonClicked_2(self):
         self.finding_name = QFileDialog.getOpenFileName(self, 'Open file', find_obj_path, "Images (*.png *.jpg)")
@@ -366,7 +367,8 @@ class Finding_group(QGroupBox):
         pic = QPixmap(self.finding_name[0])
         pic=pic.scaledToWidth(600)
         self.finding_obj_label_2.setPixmap(QPixmap(pic))
-        self.finding_tabs.setTabText(2,os.path.basename(self.finding_name[0]))        
+        self.finding_tabs.setTabText(2,os.path.basename(self.finding_name[0]))
+        self.finding_tabs.setCurrentIndex(2)
         
     # 찾아낸 그림의 문자를 분석합니다...이미지 투 문자 (OCR)
     # 요게 잘 안되요... 업데이트가 필요합니다.
@@ -438,6 +440,13 @@ class Finding_group(QGroupBox):
         text = pytesseract.image_to_string(final_image_1, config=custom_config)
         text += pytesseract.image_to_string(final_image_2, config=custom_config) 
         
+        reader = easyocr.Reader(['ko','en'])
+        result = reader.readtext(image=final_image_1)
+        result += reader.readtext(image=final_image_2)
+        
+        for word in result: 
+            window.terminal_group.terminal_browser.append("word:" + word[1] + "   (match rate:" + str(word[2]) + "%)")
+
         lines = text.split("\n")
         lines = list(filter(None,lines))
         while ' ' in lines:
@@ -484,6 +493,8 @@ class Finding_group(QGroupBox):
         self.finding_tabs.setTabText(3, os.path.basename(self.pic_name_find2))
         os.remove(filename_2)
 
+        self.finding_tabs.setCurrentIndex(1)
+
         # fill line editor
         # 찾아낸 글자를 Line Editor에 적습니다. 현재는 아래 5개만 찾아서 넣습니다. (총 13개 칸...)
         window.info_group.info_le[0].setText(text[text.find("1 Pro",):text.find("\n",text.find("1 Pro",),)].replace("1 Project Name ","")) 
@@ -497,8 +508,8 @@ class Finding_group(QGroupBox):
         file.close()
 
         # 찾아낸 그림의 매치율 과 위치를 뿌려줍니다.
-        window.terminal_group.terminal_browser.append(f'1st image match late:' + str(round(final_match_val_1*100,4)) + "%")     
-        window.terminal_group.terminal_browser.append(f'2nd image match late:' + str(round(final_match_val_1*100,4)) + "%")     
+        window.terminal_group.terminal_browser.append(f'1st image match rate:' + str(round(final_match_val_1*100,4)) + "%")     
+        window.terminal_group.terminal_browser.append(f'2nd image match rate:' + str(round(final_match_val_1*100,4)) + "%")     
 
     def OcrButtonClicked(self):
         try:
@@ -508,6 +519,14 @@ class Finding_group(QGroupBox):
             print(e)
             QMessageBox.about(self, "Warning", f"Error:{e.strerror}")
             return
+
+        reader = easyocr.Reader(['ko','en'])
+        result = reader.readtext(image=self.pic_name_find1,detail=0)
+        result += reader.readtext(image=self.pic_name_find2,detail=0)
+        
+        for word in result: 
+            window.terminal_group.terminal_browser.append(word)
+
         lines = text.split("\n")
         lines = list(filter(None,lines))
         while ' ' in lines:
