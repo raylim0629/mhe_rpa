@@ -1181,7 +1181,7 @@ class Data_table_group(QGroupBox):
 
     def item_clicked(self):
         self.data_table_pjt.selectRow(self.data_table_pjt.currentRow())
-        for i, le in enumerate(self.info_group.info_le):
+        for i, le in enumerate(window.info_group.info_le):
             le.setText(self.data_table_pjt.item(self.data_table_pjt.currentRow(),i).text())
         print(self.df)
 
